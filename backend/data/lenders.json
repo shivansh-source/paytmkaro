@@ -1,6 +1,7 @@
 {
   "products": [
     {
+      "id": "demo-bank-a-unsecured",
       "lender": "Demo Bank A",
       "product": "Unsecured business loan",
       "ticket_size": { "min": 100000, "max": 2500000 },
@@ -18,6 +19,7 @@
       "pricing": { "apr_range": [16, 20], "processing_fee_pct": 2 }
     },
     {
+      "id": "demo-nbfc-b-flexi",
       "lender": "Demo NBFC B",
       "product": "Flexi MSME loan",
       "ticket_size": { "min": 50000, "max": 1500000 },
@@ -35,6 +37,7 @@
       "pricing": { "apr_range": [20, 26], "processing_fee_pct": 2.5 }
     },
     {
+      "id": "demo-finance-c-gst",
       "lender": "Demo Finance C",
       "product": "GST turnover loan",
       "ticket_size": { "min": 100000, "max": 1200000 },
