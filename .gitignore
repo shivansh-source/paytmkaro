@@ -2,11 +2,15 @@
 __pycache__/
 *.pyc
 .venv/
+.pytest_cache/
 
 # Node / Next.js
 node_modules/
 .next/
 out/
+
+# Secrets
+.env
 
 # OS/editor
 .DS_Store

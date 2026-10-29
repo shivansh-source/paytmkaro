@@ -1,0 +1,13 @@
+{
+  "sme_id": "SAMPLE-B",
+  "requested_amount": 500000,
+  "requested_tenure_months": 24,
+  "business_vintage_months": 14,
+  "annual_turnover": 1100000,
+  "bureau_score": 705,
+  "foir": 0.42,
+  "bounces_6m": 3,
+  "gst_registered": true,
+  "constitution": "proprietorship",
+  "sector": "retail"
+}

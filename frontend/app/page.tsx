@@ -17,7 +17,7 @@ export default function HomePage() {
         ))}
       </ul>
       <p>
-        API endpoints live in <code>apps/api/app/main.py</code> and schemas in <code>apps/api/schemas</code>.
+        API routes live in <code>backend/app/api/v1</code> and lender records in <code>backend/data/lenders.json</code>.
       </p>
     </main>
   );
