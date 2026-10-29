@@ -1,0 +1,55 @@
+{
+  "products": [
+    {
+      "lender": "Demo Bank A",
+      "product": "Unsecured business loan",
+      "ticket_size": { "min": 100000, "max": 2500000 },
+      "tenure_months": { "min": 12, "max": 36 },
+      "min_business_vintage_months": 24,
+      "min_annual_turnover": 1500000,
+      "min_bureau_score": 730,
+      "max_foir": 0.45,
+      "max_bounces_6m": 2,
+      "gst_required": true,
+      "allowed_constitutions": ["proprietorship", "partnership", "pvt_ltd"],
+      "excluded_sectors": ["real_estate", "gold_trading"],
+      "collateral": "none",
+      "scheme": "CGTMSE",
+      "pricing": { "apr_range": [16, 20], "processing_fee_pct": 2 }
+    },
+    {
+      "lender": "Demo NBFC B",
+      "product": "Flexi MSME loan",
+      "ticket_size": { "min": 50000, "max": 1500000 },
+      "tenure_months": { "min": 6, "max": 30 },
+      "min_business_vintage_months": 12,
+      "min_annual_turnover": 800000,
+      "min_bureau_score": 680,
+      "max_foir": 0.55,
+      "max_bounces_6m": 4,
+      "gst_required": false,
+      "allowed_constitutions": ["proprietorship", "partnership", "pvt_ltd"],
+      "excluded_sectors": [],
+      "collateral": "none",
+      "scheme": "none",
+      "pricing": { "apr_range": [20, 26], "processing_fee_pct": 2.5 }
+    },
+    {
+      "lender": "Demo Finance C",
+      "product": "GST turnover loan",
+      "ticket_size": { "min": 100000, "max": 1200000 },
+      "tenure_months": { "min": 12, "max": 24 },
+      "min_business_vintage_months": 9,
+      "min_annual_turnover": 1000000,
+      "min_bureau_score": 650,
+      "max_foir": 0.6,
+      "max_bounces_6m": 5,
+      "gst_required": true,
+      "allowed_constitutions": ["proprietorship", "partnership"],
+      "excluded_sectors": ["crypto"],
+      "collateral": "none",
+      "scheme": "none",
+      "pricing": { "apr_range": [19, 25], "processing_fee_pct": 2.2 }
+    }
+  ]
+}
