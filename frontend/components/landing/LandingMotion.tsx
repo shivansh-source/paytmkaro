@@ -39,6 +39,8 @@ export function LandingMotion() {
 
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       reveal();
+      gsap.set(".fill-word", { opacity: 1 });
+      gsap.set("[data-reel]", { y: "-24em" });
       return;
     }
 
@@ -105,23 +107,12 @@ export function LandingMotion() {
         });
       }
 
-      // ---- "Not yet": warped lines straighten as you scroll ----
-      const waveLines = all("[data-wave-line]");
-      waveLines.forEach((line, i) => {
-        const k = i - (waveLines.length - 1) / 2;
-        gsap.fromTo(
-          line,
-          { rotate: k * -6, skewX: -18 + i * 3, xPercent: 18 + i * 7, scaleY: 1.5, opacity: 0.15 },
-          {
-            rotate: 0,
-            skewX: 0,
-            xPercent: 0,
-            scaleY: 1,
-            opacity: 1,
-            ease: "none",
-            scrollTrigger: { trigger: "[data-wave]", start: "top 90%", end: "center 45%", scrub: 1 }
-          }
-        );
+      // ---- "Not yet": words light up one by one as you scroll ----
+      gsap.to("[data-fill] .fill-word", {
+        opacity: 1,
+        stagger: 0.1,
+        ease: "none",
+        scrollTrigger: { trigger: "[data-fill]", start: "top 75%", end: "bottom 50%", scrub: true }
       });
 
       gsap.from("[data-panel-row]", {
@@ -133,35 +124,27 @@ export function LandingMotion() {
         scrollTrigger: { trigger: "[data-panel]", start: "top 80%" }
       });
 
-      // ---- Process: pinned circle reveal, score counts up, checks pop in ----
+      // ---- Process: plays once on entry. Digit reels spin to the score, gauge draws, checks appear ----
       const process = document.querySelector<HTMLElement>("[data-process]");
       if (process) {
-        const score = process.querySelector<HTMLElement>("[data-score]");
-        const target = Number(score?.dataset.score ?? 0);
-        const count = { v: 0 };
+        const ring = process.querySelector<SVGCircleElement>("[data-score-ring]");
+        const length = ring ? ring.getTotalLength() : 0;
+        const value = Number(ring?.dataset.value ?? 0) / 100;
+        const reels = all("[data-reel]", process);
+        if (ring) gsap.set(ring, { strokeDasharray: length, strokeDashoffset: length });
+        gsap.set(reels, { y: 0 });
+        gsap.set("[data-check]", { opacity: 0, y: 24 });
+
         gsap
-          .timeline({ scrollTrigger: { trigger: process, start: "top top", end: "+=220%", pin: true, scrub: 0.8 } })
-          .fromTo(
-            "[data-ring-clip]",
-            { clipPath: "circle(9% at 50% 50%)" },
-            { clipPath: "circle(78% at 50% 50%)", duration: 1, ease: "power2.inOut" },
+          .timeline({ scrollTrigger: { trigger: process, start: "top 55%", once: true } })
+          .to(ring, { strokeDashoffset: length * (1 - value), duration: 2.2, ease: "power3.inOut" }, 0)
+          .to(
+            reels,
+            // Land on the extra digit after two full 0-9 cycles.
+            { y: "-24em", duration: 2, ease: "power4.inOut", stagger: 0.2 },
             0
           )
-          .fromTo("[data-ring-clip] video", { scale: 1.5 }, { scale: 1, duration: 1.4, ease: "none" }, 0)
-          .to(
-            count,
-            {
-              v: target,
-              duration: 1.1,
-              ease: "power1.out",
-              onUpdate: () => {
-                if (score) score.textContent = String(Math.round(count.v));
-              }
-            },
-            0.25
-          )
-          .from("[data-check]", { opacity: 0, scale: 0.85, y: 30, stagger: 0.18, duration: 0.4 }, 0.85)
-          .to({}, { duration: 0.4 });
+          .to("[data-check]", { opacity: 1, y: 0, duration: 0.7, ease: "power3.out", stagger: 0.15 }, 1.6);
       }
 
       gsap.from("[data-step]", {
@@ -200,20 +183,12 @@ export function LandingMotion() {
         tl.to({}, { duration: 0.4 });
       }
 
-      // ---- Sliced strips assemble into one image ----
-      all("[data-strips]").forEach((box) => {
-        gsap.fromTo(
-          all("[data-strip]", box),
-          { yPercent: (i: number) => (i % 2 ? 110 : -110), opacity: 0 },
-          {
-            yPercent: 0,
-            opacity: 1,
-            ease: "power2.out",
-            stagger: 0.04,
-            scrollTrigger: { trigger: box, start: "top 95%", end: "center 50%", scrub: 1 }
-          }
-        );
-      });
+      // ---- Video band: gentle parallax inside its frame ----
+      gsap.fromTo(
+        "[data-band-inner]",
+        { yPercent: -12 },
+        { yPercent: 12, ease: "none", scrollTrigger: { trigger: "[data-band]", start: "top bottom", end: "bottom top", scrub: true } }
+      );
 
       // ---- CTA: tunnel rushes in, title grows ----
       gsap

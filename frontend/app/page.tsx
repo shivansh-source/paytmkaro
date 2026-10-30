@@ -20,11 +20,12 @@ const problems = [
   </>
 ];
 
+// [plain part, highlighted part]
 const notYet = [
-  "“Not yet” is not “no”.",
-  "Not yet means: here’s why.",
-  "Not yet means: here’s what to fix.",
-  "Not yet means: you’ll get there."
+  ["“Not yet” is", "not “no”."],
+  ["Not yet means:", "here’s why."],
+  ["Not yet means:", "here’s what to fix."],
+  ["Not yet means:", "you’ll get there."]
 ];
 
 const steps = [
@@ -185,11 +186,22 @@ export default function HomePage() {
           <p className="eyebrow" data-scramble>
             The not-yet path
           </p>
-          {notYet.map((line) => (
-            <h2 key={line} className="statement wave-line" data-wave-line>
-              {line}
-            </h2>
-          ))}
+          <div className="fill-lines" data-fill>
+            {notYet.map(([plain, hl]) => (
+              <h2 key={hl} className="statement">
+                {plain.split(" ").map((word, i) => (
+                  <span key={`p${i}`} className="fill-word">
+                    {word}{" "}
+                  </span>
+                ))}
+                {hl.split(" ").map((word, i) => (
+                  <span key={`h${i}`} className="fill-word gold">
+                    {word}{" "}
+                  </span>
+                ))}
+              </h2>
+            ))}
+          </div>
 
           <div className="example">
             <div data-lines>
@@ -240,14 +252,29 @@ export default function HomePage() {
         {/* ---------- Process (pinned ring reveal) ---------- */}
         <section className="process" id="how" data-process>
           <div className="ring-stage">
-            <div className="ring-clip" data-ring-clip>
+            <div className="ring-clip">
               <BgVideo name="process-rings" />
             </div>
             <div className="shade" />
             <div className="content">
               <p className="eyebrow">Credit-readiness score</p>
-              <div className="score" data-score="82">
-                82
+              <div className="score-wrap">
+                <svg className="score-ring" viewBox="0 0 100 100" aria-hidden="true">
+                  <circle cx="50" cy="50" r="46" className="score-ring-track" />
+                  <circle cx="50" cy="50" r="46" className="score-ring-fill" data-score-ring data-value="82" />
+                </svg>
+                <div className="score" aria-label="82">
+                  {[..."82"].map((digit, i) => (
+                    <span key={i} className="digit" aria-hidden="true">
+                      <span className="reel" data-reel={digit}>
+                        {Array.from({ length: 20 }, (_, n) => (
+                          <span key={n}>{n % 10}</span>
+                        ))}
+                        <span>{digit}</span>
+                      </span>
+                    </span>
+                  ))}
+                </div>
               </div>
               <div className="score-label">out of 100 · sample applicant</div>
             </div>
@@ -322,15 +349,10 @@ export default function HomePage() {
 
         {/* ---------- Lenders ---------- */}
         <section className="section" id="lenders">
-          <div className="strips" data-strips aria-hidden="true">
-            {Array.from({ length: 14 }, (_, i) => (
-              <div
-                key={i}
-                className="strip"
-                data-strip
-                style={{ backgroundPosition: `${(i / 13) * 100}% 50%` }}
-              />
-            ))}
+          <div className="band" data-band aria-hidden="true">
+            <div className="band-inner" data-band-inner>
+              <BgVideo name="hero-lines" />
+            </div>
           </div>
           <div className="lender-grid">
             <div data-lines>

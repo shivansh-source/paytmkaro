@@ -246,11 +246,6 @@ a {
   padding-bottom: clamp(120px, 20vh, 220px);
 }
 
-.wave-line {
-  transform-origin: left center;
-  will-change: transform;
-}
-
 .example {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
@@ -892,20 +887,25 @@ html.lenis body {
   line-height: 1.6;
 }
 
-/* ---- Strips ---- */
+/* ---- Video band ---- */
 
-.strips {
-  display: flex;
-  height: clamp(160px, 26vw, 360px);
+.band {
+  position: relative;
+  height: clamp(180px, 28vw, 380px);
   margin: 0 calc(var(--pad) * -1) clamp(64px, 10vh, 120px);
   overflow: hidden;
 }
 
-.strip {
-  flex: 1;
-  background-image: url("/media/hero-lines.jpg");
-  background-size: 1400% auto;
-  background-repeat: no-repeat;
+.band-inner {
+  position: absolute;
+  inset: -15% 0;
+}
+
+.band::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, var(--bg) 0%, rgba(5, 5, 7, 0) 25%, rgba(5, 5, 7, 0) 75%, var(--bg) 100%);
 }
 
 .lender-actions {
@@ -936,4 +936,68 @@ html.lenis body {
   .scroll-cue {
     display: none;
   }
+}
+
+/* ---- Not yet: words light up on scroll ---- */
+
+.fill-lines .statement {
+  font-size: clamp(34px, 5vw, 84px);
+}
+
+.js .fill-word {
+  opacity: 0.14;
+}
+
+/* ---- Score: odometer digits + gauge ring ---- */
+
+.score-wrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: clamp(260px, 34vw, 460px);
+  aspect-ratio: 1;
+  margin: 8px auto 0;
+}
+
+.score-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.score-ring circle {
+  fill: none;
+  stroke-width: 0.6;
+}
+
+.score-ring-track {
+  stroke: rgba(244, 239, 230, 0.14);
+}
+
+.score-ring-fill {
+  stroke: var(--gold);
+  stroke-linecap: round;
+}
+
+.score .digit {
+  display: inline-block;
+  height: 1.2em;
+  overflow: hidden;
+  line-height: 1.2;
+}
+
+.reel {
+  display: block;
+}
+
+.reel > span {
+  display: block;
+  height: 1.2em;
+}
+
+/* Without JS, show the final digit. */
+html:not(.js) .reel {
+  transform: translateY(-24em);
 }
