@@ -220,7 +220,7 @@ CONSTITUTIONS = sorted({code for _, code in _CONSTITUTIONS})
 
 
 def normalize_constitution(text: str) -> str | None:
-    """GST 'Constitution of Business' wording -> SMEProfile.constitution vocabulary."""
+    """GST 'Constitution of Business' wording -> MatchInput.constitution vocabulary."""
     low = str(text).lower()
     if low.strip() in CONSTITUTIONS:
         return low.strip()

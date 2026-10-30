@@ -18,3 +18,5 @@ out/
 # Raw stock footage (compressed copies live in frontend/public/media)
 frontend/movies/
 *.docx
+# ...but test fixtures must be committed
+!backend/tests/fixtures/**/*.docx

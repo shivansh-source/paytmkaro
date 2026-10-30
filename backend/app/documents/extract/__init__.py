@@ -2,7 +2,7 @@
 
     result = extract(document, DocumentType.PAN_CARD, vlm=get_default_vlm())
     features = profile_features([result, ...], as_of=date.today())
-    SMEProfile(sme_id=..., requested_amount=..., **features.profile_fields())
+    MatchInput(sme_id=..., requested_amount=..., **features.profile_fields())
 """
 
 from __future__ import annotations

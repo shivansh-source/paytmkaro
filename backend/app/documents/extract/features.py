@@ -1,4 +1,8 @@
-"""From extracted documents to SMEProfile features, plus cross-document checks.
+"""From extracted documents to MatchInput features, plus cross-document checks.
+
+NOTE: superseded by app.validation (cross-document checks) and app.scoring (metrics, readiness), which
+the dashboards and lenders use. Kept until the adapter from ExtractionResult to DocumentEnvelope lands;
+do not build new features on it.
 
 Every number here is computed in code from validated fields and rows; each
 feature says which document and field it came from and whether it is an estimate.
@@ -16,7 +20,7 @@ from pydantic import BaseModel
 
 from app.documents.extract.common import month_key, month_label, month_range, months_between, normalize_name, parse_date
 from app.documents.models import DocumentType, ExtractionResult
-from app.recommendation.models import SMEProfile
+from app.recommendation.models import MatchInput
 from app.recommendation.rules import inr
 
 I = re.IGNORECASE
@@ -61,8 +65,8 @@ class ProfileFeatures(BaseModel):
     warnings: list[str] = []
 
     def profile_fields(self) -> dict[str, Any]:
-        """Only the SMEProfile fields, ready for SMEProfile(sme_id=..., requested_amount=..., **this)."""
-        return {k: v.value for k, v in self.features.items() if k in SMEProfile.model_fields}
+        """Only the MatchInput fields, ready for MatchInput(sme_id=..., requested_amount=..., **this)."""
+        return {k: v.value for k, v in self.features.items() if k in MatchInput.model_fields}
 
 
 # ---------- helpers ----------
@@ -138,7 +142,7 @@ def _gst_periods(results: list[ExtractionResult]) -> dict[str, dict[str, Any]]:
 
 
 def profile_features(results: list[ExtractionResult], *, as_of: date | None = None) -> ProfileFeatures:
-    """SMEProfile-compatible features from a set of extracted documents, each with provenance.
+    """MatchInput-compatible features from a set of extracted documents, each with provenance.
     bureau_score and sector are never derived (they cannot come from these documents)."""
     as_of = as_of or date.today()
     out = ProfileFeatures(as_of=as_of)

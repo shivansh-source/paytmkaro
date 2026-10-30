@@ -12,7 +12,7 @@ from app.config import DATA_DIR
 from app.documents.extract import extract, name_match, profile_features
 from app.documents.extract.common import gstin_check_char, money
 from app.documents.models import DocumentType, ExtractionResult, LoadedDocument, LoadStatus, Page, SourceFormat, TextSource
-from app.recommendation import SMEProfile, load_lender_products, recommend
+from app.recommendation import MatchInput, load_lender_products, recommend
 
 AS_OF = date(2026, 10, 31)
 PAN = "ABCPK1234F"
@@ -105,7 +105,7 @@ def test_applicant_b_features_match_the_sample_profile():
     assert not f["bounces_6m"].estimate and "2026-04-01 to 2026-09-30" in f["bounces_6m"].method
     assert f["foir"].estimate and f["bounces_6m"].source == "bank_statement.transactions.narration"
     assert "bureau_score" not in f and "sector" not in f
-    assert set(features.profile_fields()) <= set(SMEProfile.model_fields)
+    assert set(features.profile_fields()) <= set(MatchInput.model_fields)
 
 
 def test_applicant_b_planted_errors_are_flagged():
@@ -130,7 +130,7 @@ def test_applicant_b_planted_errors_are_flagged():
 def test_applicant_b_features_drive_the_match_engine():
     features = profile_features(applicant_b_results(), as_of=AS_OF)
     # Bureau score and sector cannot come from documents: self-declared here, as in applicant_b.json.
-    profile = SMEProfile(sme_id="SAMPLE-B", requested_amount=500000, requested_tenure_months=24, bureau_score=705, sector="retail", **features.profile_fields())
+    profile = MatchInput(sme_id="SAMPLE-B", requested_amount=500000, requested_tenure_months=24, bureau_score=705, sector="retail", **features.profile_fields())
     results = {r.lender: r for r in recommend(profile, load_lender_products())}
 
     assert results["Demo Bank A"].status == "not_yet"
