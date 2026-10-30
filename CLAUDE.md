@@ -8,6 +8,16 @@ working name ("setu" = bridge).
 **One-liner:** weeks of paperwork and lender-hopping become one application and a matched, explained
 shortlist in under a day. The lender still makes the credit decision, on a complete, verified file.
 
+## Who owns what
+
+- **Lakshya:** OCR / VLM extraction. Output contract: `DocumentEnvelope` (`schemas/v1/msme/`). Aadhaar
+  is masked in his layer (Verhoeff on the full number, then only `aadhaar_last4` leaves it). Extracts raw
+  values with confidence + bbox; does not "fix" misreads.
+- **Anansh:** lender side. Owns `schemas/v1/lender/lender_product.schema.json` and lender records.
+- **Shivansh (with Claude):** validation + cash-flow metrics + readiness (envelopes → `SmeProfile`),
+  recommendation engine, landing page, dashboards. Transaction tagging (bounce / EMI / NACH) from
+  narrations happens in validation, not extraction.
+
 ## Product in brief
 
 Two-sided platform. The SME journey is the hero of the demo; the lender side is one screen.
@@ -45,8 +55,12 @@ backend/                 FastAPI (Python 3.13)
     main.py              creates the app, mounts /v1 router + /health
     config.py            paths (DATA_DIR, LENDERS_FILE)
     api/v1/              thin routes, one file per resource
-    schemas/             shared MSME data contracts (see "Schemas" below)
-    recommendation/      lender matching engine (see below)
+    schemas/             shared data contracts (see "Schemas" below)
+    validation/          per-document + cross-document checks, transaction tagging
+    scoring/             metrics, identity, readiness, fix-it; assess() builds the SmeProfile
+    recommendation/      lender matching engine + "not yet" fixes
+    offers/              KFS math: EMI, schedule, fees, true APR
+    samples/             synthetic Applicants A and B as DocumentEnvelopes
   data/
     lenders.json         mock lender products (edit freely; re-read on every request)
     sample_profiles/     MatchInput fixtures: applicant_a.json (clean), applicant_b.json (messy)
@@ -90,14 +104,42 @@ The dev machine is Windows; Bash (Git Bash) and PowerShell are both available.
 
 | Method | Path                        | Status                            |
 | ------ | --------------------------- | --------------------------------- |
-| POST   | `/v1/documents`             | stub                              |
-| GET    | `/v1/profile/{sme_id}`      | stub                              |
-| POST   | `/v1/match`                 | working: ranked lenders + reasons |
-| GET    | `/v1/lenders`               | working: lender products          |
-| GET    | `/v1/offers/{id}/explain`   | stub (KFS)                        |
+| POST   | `/v1/documents`             | stub                                                     |
+| GET    | `/v1/profile/{sme_id}`      | stub (no storage yet)                                    |
+| POST   | `/v1/assess`                | envelopes → checked documents + `SmeProfile`             |
+| POST   | `/v1/match/profile`         | `SmeProfile` + `LoanRequest` → ranked lenders + fixes    |
+| POST   | `/v1/match`                 | flat `MatchInput` → ranked lenders (for testing rules)   |
+| GET    | `/v1/lenders`               | lender products                                          |
+| GET    | `/v1/offers/{id}/explain`   | `?amount=&tenure_months=` → KFS numbers                  |
 
-`/v1/match` currently takes a `MatchInput` in the body; later it should take an `sme_id` and load
-the validated profile.
+Demo flow: `/v1/assess` → `/v1/match/profile` → `/v1/offers/{id}/explain`. Nothing is persisted yet;
+the client passes the profile back. Storage + `sme_id`-based lookups come later.
+
+## Pipeline: validation → scoring → engine → offers
+
+All deterministic, all run on synthetic data today (`app/samples/`), and on Lakshya's envelopes later.
+
+- **`app/validation/`**: `checksums.py` (Verhoeff, GSTIN check digit, state codes), `text.py` (fuzzy
+  name / address match: exact = pass, initials or near-spelling = warn), `tagging.py` (bounce / EMI /
+  NACH / charges / UPI / cash / GST from narrations; a bounce charge line is `charges`, not a second
+  bounce, and "CHGS INCL GST" is not a GST payment), `documents.py` (per-document checks, check ids like
+  `pan.format`, `bank.balance_math`, plus a `*.needs_review` warning listing low-confidence fields),
+  `cross.py` (`DocumentSet` = latest envelope per type, GSTR-3B merged across uploads; the 7
+  `CrossCheck`s; GST/bank ratio pass 0.7-1.3, warn 0.5-1.6).
+- **`app/scoring/`**: `metrics.py` (definitions in its docstring: AMB = mean daily end-of-day balance,
+  credits exclude bounce reversals, bounces in last 6 statement months, EMI = avg of last 3 months,
+  FOIR = EMI / avg credits, GST turnover annualised; identity from GST > PAN, vintage from Udyam
+  incorporation, else GST registration), `readiness.py` (components 25/25/15/25/10, bands ready ≥75,
+  almost ≥50; **failed balance math caps the score at 49**), `fixit.py`, and `assess()` in
+  `__init__.py`, the single entry point.
+- **`app/offers/kfs.py`**: EMI (reducing balance, rounded to the rupee, last EMI clears the balance),
+  processing fee + 18% GST, net disbursed, total payable, total cost of credit, **true APR = IRR of net
+  disbursed vs EMIs, × 12**. Best and worst case from the lender's range. Uses
+  `interest_rate_range_pct_pa` when published, else the APR range as a proxy (flagged in `notes`).
+- **`app/samples/applicants.py`**: Applicant A (clean: readiness 100, all lenders) and B (3 planted
+  problems: "RAVI KUMAAR" on bank statement → name warn; no GSTR-3B for Jul 2026 → gap fail; credit on
+  10 Feb 2026 edited 24k→54k → balance-math fail → readiness capped at 49). Target output shape for
+  extraction. `AS_OF = 2026-10-31` keeps tests stable.
 
 ## Schemas (`backend/app/schemas/`)
 
@@ -138,10 +180,17 @@ optional (PDF→parser).
 
 ## Recommendation engine (`backend/app/recommendation/`)
 
-- `models.py`: `MatchInput` (flat engine input), `CheckResult`, `MatchResult`; re-exports the shared
-  `LenderProduct` from `app/schemas/lender.py`. The engine filters on a subset of lender fields today;
-  `itr_required`, `udyam_required`, `bureau_score_is_hard_cutoff`, `min_business_vintage_by_constitution`
-  etc. are in the schema but not yet ruled on.
+- `models.py`: `MatchInput` (flat engine input), `CheckResult` (outcome pass / warn / fail / missing),
+  `Fix`, `MatchResult` (with `fixes` and `quick_fix`); re-exports the shared `LenderProduct`.
+- Rules cover ticket size, tenure, vintage (per-constitution override wins), turnover, bureau
+  (`bureau_score_is_hard_cutoff: false` → **warn**, not fail), FOIR, bounces, statement months, age,
+  GST / ITR / Udyam required, constitution, excluded + eligible sectors, negative geographies,
+  collateral-free limit (above it → warn). `warn` never blocks; it counts as zero headroom in fit.
+  Not ruled on yet: `ticket_size_tiers`, `udyam_preferred`, charges, internal score thresholds.
+- `fixes.py`: the "not yet" path. Each blocking check becomes one `Fix` computed from the gap:
+  change_request ("Ask for ₹12,00,000 or less"), wait ("Eligible in 10 months"), improve ("Raise your
+  bureau score by 25 points", "Reduce existing EMIs by about 20%"), add_document, add_info,
+  not_eligible. A product whose fixes are all change_request is a `quick_fix`.
 - `adapter.py`: `match_input(SmeProfile, LoanRequest) -> MatchInput`. The only place that knows both
   shapes; if `SmeProfile` changes, change this.
 - `rules.py`: `RULES` list, one rule per criterion. Numeric min/max criteria are one `Threshold(...)`
@@ -150,7 +199,7 @@ optional (PDF→parser).
   - Any `fail` or `missing` check makes a product `not_yet`; check messages become the reasons
     ("Business vintage: needs at least 24 months, you have 14 months").
   - Fit score (matched only) = average headroom (0–1) across passing numeric thresholds × 100.
-  - Rank: matched by fit desc then APR asc; not-yet by fewest blockers then APR.
+  - Rank: matched by fit desc then APR asc; not-yet: quick fixes first, then fewest fixes, then APR.
 - `lenders.py`: loads `data/lenders.json`.
 - `inr()` in `rules.py` formats rupees with Indian grouping (₹15,00,000).
 
@@ -162,8 +211,9 @@ Known open decision: "fit, then APR" ranks lenient expensive lenders above stric
 A sees Demo Bank A, the cheapest, last). Ranking matched products by APR with fit as tie-breaker is a
 one-line change in `_rank_key`; not decided yet.
 
-Demo expectations (covered by tests): Applicant A matches all 3 lenders; Applicant B is "not yet" for
-Demo Bank A with vintage/turnover/bureau/bounce reasons and matched for the other two.
+Demo expectations (covered by tests, full pipeline from documents): Applicant A matches all 3 lenders;
+Applicant B is "not yet" for Demo Bank A with vintage / turnover / bureau / bounce fixes and matched for
+Demo NBFC B. At ₹14 lakh, B's Demo Finance C becomes a quick fix ("Ask for ₹12,00,000 or less").
 
 ## Landing page (`frontend/`)
 

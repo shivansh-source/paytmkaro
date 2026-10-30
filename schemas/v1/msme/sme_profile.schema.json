@@ -477,9 +477,18 @@
     },
     "Identity": {
       "additionalProperties": false,
+      "description": "Fields stay None until the document that provides them is uploaded.",
       "properties": {
         "legal_name": {
-          "$ref": "#/$defs/Sourced_str_"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Sourced_str_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "trade_name": {
           "anyOf": [
@@ -493,10 +502,37 @@
           "default": null
         },
         "constitution": {
-          "$ref": "#/$defs/Sourced_Constitution_"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Sourced_Constitution_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "pan": {
-          "$ref": "#/$defs/Sourced_str_"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Sourced_str_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "promoter_dob": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Sourced_date_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "gstin": {
           "anyOf": [
@@ -577,11 +613,6 @@
           "title": "Sector"
         }
       },
-      "required": [
-        "legal_name",
-        "constitution",
-        "pan"
-      ],
       "title": "Identity",
       "type": "object"
     },

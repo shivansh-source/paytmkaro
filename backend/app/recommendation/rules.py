@@ -27,8 +27,8 @@ def inr(amount: float) -> str:
     return "₹" + ",".join(groups)
 
 
-def months(n: int) -> str:
-    return f"{n} months"
+def months(n: float) -> str:
+    return f"{n:g} months"
 
 
 def pct(ratio: float) -> str:
@@ -50,9 +50,13 @@ class Threshold:
     at_least: bool
     label: str
     fmt: Callable[[Any], str] = str
+    # Optional override for the bar, e.g. a stricter vintage for one constitution.
+    requirement: Callable[[MatchInput, LenderProduct], Any] | None = None
+    # Product flag that, when explicitly False, makes a miss a soft "warn" instead of a "fail".
+    soft_flag: str | None = None
 
     def __call__(self, profile: MatchInput, product: LenderProduct) -> CheckResult | None:
-        required = getattr(product, self.criterion)
+        required = self.requirement(profile, product) if self.requirement else getattr(product, self.criterion)
         if required is None:
             return None
 
@@ -68,12 +72,15 @@ class Threshold:
 
         gap = actual - required if self.at_least else required - actual
         if gap < 0:
+            soft = self.soft_flag is not None and getattr(product, self.soft_flag) is False
             return CheckResult(
                 rule=self.rule,
-                outcome="fail",
+                outcome="warn" if soft else "fail",
                 required=required,
                 actual=actual,
-                message=f"{self.label}: needs {bound} {self.fmt(required)}, you have {self.fmt(actual)}",
+                headroom=0.0 if soft else None,
+                message=f"{self.label}: needs {bound} {self.fmt(required)}, you have {self.fmt(actual)}"
+                + ("; not a hard cutoff, so the lender may still consider you" if soft else ""),
             )
 
         limit = "minimum" if self.at_least else "limit"
@@ -202,15 +209,109 @@ def sector(profile: MatchInput, product: LenderProduct) -> CheckResult | None:
     )
 
 
+def _flag_rule(rule: str, criterion: str, have_field: str, label: str, missing_hint: str):
+    """A yes/no requirement: the lender requires a document or registration the SME may lack."""
+
+    def check(profile: MatchInput, product: LenderProduct) -> CheckResult | None:
+        if not getattr(product, criterion):
+            return None
+        have = getattr(profile, have_field)
+        if have is None:
+            return CheckResult(rule=rule, outcome="missing", required=True, message=f"{label}: {missing_hint}")
+        return CheckResult(
+            rule=rule,
+            outcome="pass" if have else "fail",
+            required=True,
+            actual=have,
+            message=f"{label}: provided" if have else f"{label}: required by this lender",
+        )
+
+    check.__name__ = rule
+    return check
+
+
+itr = _flag_rule("itr", "itr_required", "has_itr", "ITR-V", "this lender requires it; upload your ITR-V")
+udyam = _flag_rule("udyam", "udyam_required", "has_udyam", "Udyam registration", "this lender requires it; upload your Udyam certificate")
+
+
+def eligible_sectors(profile: MatchInput, product: LenderProduct) -> CheckResult | None:
+    allowed = product.eligible_sectors
+    if not allowed:
+        return None
+    if profile.sector is None:
+        return CheckResult(rule="eligible_sectors", outcome="missing", required=allowed,
+                           message="Sector: not available yet; add it to check this lender")
+    ok = profile.sector in allowed
+    return CheckResult(
+        rule="eligible_sectors",
+        outcome="pass" if ok else "fail",
+        required=allowed,
+        actual=profile.sector,
+        message=f"Sector: {profile.sector} is covered" if ok else f"Sector: this product only covers {', '.join(allowed)}",
+    )
+
+
+def geography(profile: MatchInput, product: LenderProduct) -> CheckResult | None:
+    blocked = product.negative_geographies
+    if not blocked or profile.state is None:
+        return None
+    ok = profile.state not in blocked
+    return CheckResult(
+        rule="geography",
+        outcome="pass" if ok else "fail",
+        required=blocked,
+        actual=profile.state,
+        message=f"Location: {profile.state} is served" if ok else f"Location: this lender doesn't lend in {profile.state}",
+    )
+
+
+def collateral_free_limit(profile: MatchInput, product: LenderProduct) -> CheckResult | None:
+    limit = product.collateral_free_limit
+    if limit is None:
+        return None
+    ok = profile.requested_amount <= limit
+    return CheckResult(
+        rule="collateral_free_limit",
+        outcome="pass" if ok else "warn",
+        required=limit,
+        actual=profile.requested_amount,
+        headroom=None if ok else 0.0,
+        message=f"Collateral: none needed up to {inr(limit)}"
+        if ok
+        else f"Collateral: above {inr(limit)} this lender asks for security; borrow {inr(limit)} or less to avoid it",
+    )
+
+
+def _vintage_requirement(profile: MatchInput, product: LenderProduct):
+    """Lenders can set a different vintage per constitution; that wins over the general minimum."""
+    for rule in product.min_business_vintage_by_constitution:
+        if profile.constitution and rule.constitution == profile.constitution and rule.min_business_vintage_months is not None:
+            return int(rule.min_business_vintage_months)
+    return product.min_business_vintage_months
+
+
+def years(n: float) -> str:
+    return f"{n:g} years"
+
+
 RULES: list[Rule] = [
     ticket_size,
     tenure,
-    Threshold("business_vintage", "business_vintage_months", "min_business_vintage_months", True, "Business vintage", months),
+    Threshold("business_vintage", "business_vintage_months", "min_business_vintage_months", True, "Business vintage", months,
+              requirement=_vintage_requirement),
     Threshold("annual_turnover", "annual_turnover", "min_annual_turnover", True, "Annual turnover", inr),
-    Threshold("bureau_score", "bureau_score", "min_bureau_score", True, "Bureau score"),
+    Threshold("bureau_score", "bureau_score", "min_bureau_score", True, "Bureau score", soft_flag="bureau_score_is_hard_cutoff"),
     Threshold("foir", "foir", "max_foir", False, "FOIR", pct),
     Threshold("bounces_6m", "bounces_6m", "max_bounces_6m", False, "Bounces in the last 6 months"),
+    Threshold("bank_statement_months", "bank_statement_months", "min_bank_statement_months", True, "Bank statement", months),
+    Threshold("min_age", "applicant_age_years", "min_age_years", True, "Applicant age", years),
+    Threshold("max_age", "applicant_age_years", "max_age_years", False, "Applicant age", years),
     gst_registration,
+    itr,
+    udyam,
     constitution,
     sector,
+    eligible_sectors,
+    geography,
+    collateral_free_limit,
 ]

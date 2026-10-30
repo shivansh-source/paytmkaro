@@ -25,10 +25,13 @@ from app.schemas.documents import DocumentStatus
 
 
 class Identity(Schema):
-    legal_name: Sourced[str]
+    """Fields stay None until the document that provides them is uploaded."""
+
+    legal_name: Sourced[str] | None = None
     trade_name: Sourced[str] | None = None
-    constitution: Sourced[Constitution]
-    pan: Sourced[str]
+    constitution: Sourced[Constitution] | None = None
+    pan: Sourced[str] | None = None
+    promoter_dob: Sourced[date] | None = None  # proprietor / main promoter, from PAN; for lender age limits
     gstin: Sourced[str] | None = None
     udyam_number: Sourced[str] | None = None
     msme_category: Sourced[MsmeCategory] | None = None

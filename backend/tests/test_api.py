@@ -27,3 +27,27 @@ def test_match_returns_ranked_results():
     statuses = [r["status"] for r in response.json()]
     assert statuses == sorted(statuses, key=lambda s: s != "matched")
     assert "not_yet" in statuses
+
+
+def test_assess_then_match_then_offer():
+    from app.samples import AS_OF, BUREAU_A, applicant_a
+
+    body = {
+        "sme_id": "SAMPLE-A",
+        "documents": [d.model_dump(mode="json") for d in applicant_a()],
+        "bureau": BUREAU_A.model_dump(mode="json"),
+        "sector": "retail",
+        "as_of": AS_OF.isoformat(),
+    }
+    assessed = client.post("/v1/assess", json=body)
+    assert assessed.status_code == 200
+    profile = assessed.json()["profile"]
+    assert profile["readiness"]["band"] == "ready"
+
+    matches = client.post("/v1/match/profile", json={"profile": profile, "request": {"sme_id": "SAMPLE-A", "amount": 500000, "tenure_months": 24}})
+    assert matches.status_code == 200
+    top = matches.json()[0]
+    assert top["status"] == "matched"
+
+    offer = client.get(f"/v1/offers/{top['product_id']}/explain", params={"amount": 500000, "tenure_months": 24})
+    assert offer.status_code == 200
