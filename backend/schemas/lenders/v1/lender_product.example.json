@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "schema_version": "1.0.0",
+  "id": "demo-bank-a-unsecured",
+  "lender": "Demo Bank A",
+  "institution_type": "bank",
+  "institution_role": "regulated_lender",
+  "product": "Unsecured business loan",
+  "product_type": "term_loan",
+  "scheme": "CGTMSE",
+  "purpose": [
+    "working_capital",
+    "business_expansion"
+  ],
+  "ticket_size": {
+    "min": 100000,
+    "max": 2500000
+  },
+  "tenure_months": {
+    "min": 12,
+    "max": 36
+  },
+  "min_business_vintage_months": 24,
+  "min_annual_turnover": 1500000,
+  "min_bureau_score": 730,
+  "bureau_score_is_hard_cutoff": true,
+  "max_foir": 0.45,
+  "max_bounces_6m": 2,
+  "gst_required": true,
+  "allowed_constitutions": [
+    "proprietorship",
+    "partnership",
+    "pvt_ltd"
+  ],
+  "excluded_sectors": [
+    "real_estate",
+    "gold_trading"
+  ],
+  "collateral": "none",
+  "credit_guarantee": {
+    "scheme": "CGTMSE",
+    "premium_borne_by": "borrower",
+    "conditions": []
+  },
+  "pricing": {
+    "apr_range": [
+      16,
+      20
+    ],
+    "processing_fee_pct": 2,
+    "apr_basis": "all_in_apr",
+    "interest_type": "unknown",
+    "indicative_only": true,
+    "notes": "Synthetic demo values; replace with lender-verified terms."
+  },
+  "source_records": [
+    {
+      "source_type": "assumed",
+      "document_name": "CreditSetu demo lender record",
+      "locator": "Illustrative mock record",
+      "captured_at": "2026-10-31",
+      "confidence": "assumed",
+      "review_status": "pending",
+      "notes": "Synthetic data only."
+    }
+  ],
+  "source_confidence": "assumed",
+  "record_status": "draft",
+  "extensions": {}
+}
