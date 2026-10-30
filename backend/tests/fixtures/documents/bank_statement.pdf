@@ -1,0 +1,80 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Length 2221 >>
+stream
+BT /F1 9 Tf 50 800 Td (DEMO BANK A) Tj ET
+BT /F1 9 Tf 50 784 Td (Statement of Account) Tj ET
+BT /F1 9 Tf 50 768 Td (Account Name: R. KUMAR \(KUMAR TRADERS\)) Tj ET
+BT /F1 9 Tf 50 752 Td (Account No: XXXXXXXX4321    IFSC: DEMO0001234) Tj ET
+BT /F1 9 Tf 50 736 Td (Period: 01-04-2025 to 30-04-2025) Tj ET
+BT /F1 9 Tf 50 720 Td (Opening Balance: 150000.00) Tj ET
+BT /F1 9 Tf 40 704 Td (Date) Tj ET
+BT /F1 9 Tf 105 704 Td (Narration) Tj ET
+BT /F1 9 Tf 330 704 Td (Chq/Ref No) Tj ET
+BT /F1 9 Tf 385 704 Td (Withdrawal) Tj ET
+BT /F1 9 Tf 445 704 Td (Deposit) Tj ET
+BT /F1 9 Tf 505 704 Td (Balance) Tj ET
+BT /F1 9 Tf 40 688 Td (02-04-2025) Tj ET
+BT /F1 9 Tf 105 688 Td (UPI/412345678901/Payment from Sharma Stores) Tj ET
+BT /F1 9 Tf 330 688 Td (REF1000) Tj ET
+BT /F1 9 Tf 445 688 Td (25000.00) Tj ET
+BT /F1 9 Tf 505 688 Td (175000.00) Tj ET
+BT /F1 9 Tf 40 672 Td (06-04-2025) Tj ET
+BT /F1 9 Tf 105 672 Td (NEFT/DEMO0002/Rent April) Tj ET
+BT /F1 9 Tf 330 672 Td (REF1001) Tj ET
+BT /F1 9 Tf 385 672 Td (18000.00) Tj ET
+BT /F1 9 Tf 505 672 Td (157000.00) Tj ET
+BT /F1 9 Tf 40 656 Td (10-04-2025) Tj ET
+BT /F1 9 Tf 105 656 Td (UPI/412345678902/Sale proceeds) Tj ET
+BT /F1 9 Tf 330 656 Td (REF1002) Tj ET
+BT /F1 9 Tf 445 656 Td (42500.50) Tj ET
+BT /F1 9 Tf 505 656 Td (199500.50) Tj ET
+BT /F1 9 Tf 40 640 Td (14-04-2025) Tj ET
+BT /F1 9 Tf 105 640 Td (ATM WDL/Pune Main) Tj ET
+BT /F1 9 Tf 330 640 Td (REF1003) Tj ET
+BT /F1 9 Tf 385 640 Td (5000.00) Tj ET
+BT /F1 9 Tf 505 640 Td (194500.50) Tj ET
+BT /F1 9 Tf 40 624 Td (18-04-2025) Tj ET
+BT /F1 9 Tf 105 624 Td (IMPS/512345678903/Supplier payment) Tj ET
+BT /F1 9 Tf 330 624 Td (REF1004) Tj ET
+BT /F1 9 Tf 385 624 Td (31250.25) Tj ET
+BT /F1 9 Tf 505 624 Td (163250.25) Tj ET
+BT /F1 9 Tf 40 608 Td (22-04-2025) Tj ET
+BT /F1 9 Tf 105 608 Td (UPI/412345678904/Payment from Mehta Traders) Tj ET
+BT /F1 9 Tf 330 608 Td (REF1005) Tj ET
+BT /F1 9 Tf 445 608 Td (1500000.00) Tj ET
+BT /F1 9 Tf 505 608 Td (1663250.25) Tj ET
+BT /F1 9 Tf 40 592 Td (26-04-2025) Tj ET
+BT /F1 9 Tf 105 592 Td (NACH/LOAN EMI/Demo NBFC B) Tj ET
+BT /F1 9 Tf 330 592 Td (REF1006) Tj ET
+BT /F1 9 Tf 385 592 Td (22500.00) Tj ET
+BT /F1 9 Tf 505 592 Td (1640750.25) Tj ET
+BT /F1 60 Tf 0.85 0.2 0.2 rg 330 60 Td (SAMPLE) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 4 0 R >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000121 00000 n 
+0000000218 00000 n 
+0000002491 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R /ID [<5183e5fc84e018e81c9313b57b01f167> <5183e5fc84e018e81c9313b57b01f167>] >>
+startxref
+2617
+%%EOF
