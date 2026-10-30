@@ -85,3 +85,10 @@ def test_full_pipeline_applicant_b_gets_the_not_yet_path():
     assert bank_a.status == "not_yet"
     assert {f.rule for f in bank_a.fixes} == {"business_vintage", "annual_turnover", "bureau_score", "bounces_6m"}
     assert results["Demo NBFC B"].status == "matched"
+
+
+def test_true_apr_includes_fees_and_fit_has_a_label():
+    result = evaluate(sme(requested_tenure_months=24), product(pricing={"apr_range": [16, 20], "processing_fee_pct": 2}))
+    assert result.true_apr_pct > 16
+    assert result.fit_label == "strong"  # no thresholds to clear
+    assert evaluate(sme(business_vintage_months=1), product(min_business_vintage_months=24)).fit_label is None

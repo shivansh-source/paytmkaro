@@ -93,17 +93,23 @@ def name_match(docs: DocumentSet) -> Check | None:
         ("bank account", DocumentType.BANK_STATEMENT, "account_holder_name"),
     ]
     results: list[tuple[str, str, CheckStatus, DocumentEnvelope]] = []
+    confirmed: list[str] = []
     for label, doc_type, attr in others:
         env = docs.get(doc_type)
         if env and (name := _v(getattr(env.data, attr))):
-            results.append((label, name, compare_names(reference, name), env))
+            status = compare_names(reference, name)
+            # The SME confirmed a near-match ("RAVI KUMAAR") is the same person. A clear mismatch stays failed.
+            if status == CheckStatus.WARN and getattr(env.data, attr).user_confirmed:
+                status = CheckStatus.PASS
+                confirmed.append(label)
+            results.append((label, name, status, env))
     if not results:
         return None
     status = _worst([r[2] for r in results])
     off = [f"{label} says '{name}'" for label, name, s, _ in results if s != CheckStatus.PASS]
     labels = ", ".join(r[0] for r in results)
     message = (
-        f"Name matches on PAN, {labels}"
+        f"Name matches on PAN, {labels}" + (f" ({', '.join(confirmed)} confirmed by you)" if confirmed else "")
         if status == CheckStatus.PASS
         else f"Your PAN says '{reference}', but {'; '.join(off)}"
         + (": please confirm it's the same person" if status == CheckStatus.WARN else "")

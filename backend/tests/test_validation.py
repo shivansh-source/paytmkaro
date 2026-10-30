@@ -109,3 +109,20 @@ def test_low_confidence_fields_are_listed_for_review():
     documents, _, _ = validate_all(docs, AS_OF)
     review = next(c for d in documents for c in d.checks if c.id == "pan.needs_review")
     assert review.status == CheckStatus.WARN and review.fields == ["data.dob"]
+
+
+def test_confirming_a_near_match_name_resolves_the_warning():
+    docs = applicant_b()
+    bank = next(d for d in docs if d.document_type == DocumentType.BANK_STATEMENT)
+    bank.data.account_holder_name.user_confirmed = True
+    check = _cross(docs)[CrossCheck.NAME_MATCH]
+    assert check.status == CheckStatus.PASS
+    assert "confirmed by you" in check.message
+
+
+def test_confirming_cannot_override_a_different_person():
+    docs = applicant_a()
+    bank = next(d for d in docs if d.document_type == DocumentType.BANK_STATEMENT)
+    bank.data.account_holder_name.value = "SUNITA SHARMA"
+    bank.data.account_holder_name.user_confirmed = True
+    assert _cross(docs)[CrossCheck.NAME_MATCH].status == CheckStatus.FAIL

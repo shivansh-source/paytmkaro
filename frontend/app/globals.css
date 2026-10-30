@@ -306,7 +306,7 @@ a {
   color: var(--ink);
 }
 
-.panel ul {
+.example .panel ul {
   margin: 14px 0 0;
   padding: 0;
   list-style: none;
@@ -316,16 +316,16 @@ a {
   line-height: 1.5;
 }
 
-.panel li {
+.example .panel li {
   padding-left: 22px;
   position: relative;
 }
 
-.panel li + li {
+.example .panel li + li {
   margin-top: 6px;
 }
 
-.panel li::before {
+.example .panel li::before {
   content: "→";
   position: absolute;
   left: 0;

@@ -30,11 +30,16 @@ def make_product(**overrides) -> LenderProduct:
 
 
 def test_clean_applicant_matches_every_lender(products):
-    results = recommend(load_profile("applicant_a"), products)
+    by_fit = recommend(load_profile("applicant_a"), products, sort="fit")
+    by_cost = recommend(load_profile("applicant_a"), products, sort="cost")
 
-    assert [r.status for r in results] == ["matched"] * len(products)
-    fits = [r.fit_score for r in results]
+    assert [r.status for r in by_fit] == ["matched"] * len(products)
+    fits = [r.fit_score for r in by_fit]
     assert fits == sorted(fits, reverse=True)
+    aprs = [r.true_apr_pct for r in by_cost]
+    assert aprs == sorted(aprs)
+    # The two orders genuinely differ: the cheapest lender is the strictest one.
+    assert by_cost[0].lender == "Demo Bank A" and by_fit[-1].lender == "Demo Bank A"
 
 
 def test_messy_applicant_gets_specific_not_yet_reasons(products):

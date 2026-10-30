@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 
 from app.schemas.lender import LenderProduct
 
-__all__ = ["CheckResult", "Fix", "LenderProduct", "MatchInput", "MatchResult"]
+__all__ = ["CheckResult", "Fix", "LenderProduct", "MatchInput", "MatchResult", "SortOrder"]
 
 
 class MatchInput(BaseModel):
@@ -90,3 +90,11 @@ class MatchResult(BaseModel):
     fixes: list[Fix] = []
     # True when every fix is just a change to the request (amount / tenure): fixable right now.
     quick_fix: bool = False
+    # True APR (fees included, best case) for the requested amount and tenure: what "lowest cost" sorts on.
+    true_apr_pct: float | None = None
+    # Plain label for the fit score. Not an approval probability: it says how comfortably the SME clears
+    # this lender's rules.
+    fit_label: Literal["strong", "good", "just_qualifies"] | None = None
+
+
+SortOrder = Literal["cost", "fit"]

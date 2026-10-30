@@ -51,3 +51,12 @@ def test_assess_then_match_then_offer():
 
     offer = client.get(f"/v1/offers/{top['product_id']}/explain", params={"amount": 500000, "tenure_months": 24})
     assert offer.status_code == 200
+
+
+def test_sample_applicants_feed_assess():
+    sample = client.get("/v1/samples/b").json()
+    assert sample["sme_id"] == "SAMPLE-B" and len(sample["documents"]) == 6
+    body = {k: sample[k] for k in ("sme_id", "documents", "bureau", "sector", "as_of")}
+    profile = client.post("/v1/assess", json=body).json()["profile"]
+    assert profile["readiness"]["band"] == "not_ready"
+    assert client.get("/v1/samples/z").status_code == 422

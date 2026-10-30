@@ -9,11 +9,16 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
 
+from app.offers import estimate_offer
 from app.recommendation.fixes import suggest_fixes
-from app.recommendation.models import LenderProduct, MatchInput, MatchResult
+from app.recommendation.models import LenderProduct, MatchInput, MatchResult, SortOrder
 from app.recommendation.rules import RULES, Rule
 
 BLOCKING = {"fail", "missing"}
+
+
+def fit_label(score: float) -> str:
+    return "strong" if score >= 60 else "good" if score >= 30 else "just_qualifies"
 
 
 def evaluate(profile: MatchInput, product: LenderProduct, rules: Sequence[Rule] = RULES) -> MatchResult:
@@ -38,6 +43,7 @@ def evaluate(profile: MatchInput, product: LenderProduct, rules: Sequence[Rule] 
         passes = [check.message for check in checks if check.outcome == "pass"]
         status, fit_score, reasons = "matched", round(fit * 100, 1), warnings + passes
 
+    best_case = estimate_offer(product, profile.requested_amount, profile.requested_tenure_months).scenarios[0]
     return MatchResult(
         product_id=product.id,
         lender=product.lender,
@@ -51,17 +57,23 @@ def evaluate(profile: MatchInput, product: LenderProduct, rules: Sequence[Rule] 
         checks=checks,
         fixes=fixes,
         quick_fix=bool(fixes) and all(f.kind == "change_request" for f in fixes),
+        true_apr_pct=best_case.apr_pct,
+        fit_label=fit_label(fit_score) if fit_score is not None else None,
     )
 
 
-def _rank_key(result: MatchResult) -> tuple:
-    # Matched: best fit first, then cheapest APR.
-    # Not yet: quick fixes (just change the request) first, then fewest fixes, then cheapest APR.
+def _rank_key(result: MatchResult, sort: SortOrder) -> tuple:
+    # Matched first in both orders. The SME picks how matched lenders are ordered:
+    #   cost: lowest true APR (fees included) first, then best fit
+    #   fit:  best fit first, then lowest true APR
+    # Not yet: quick fixes (just change the request) first, then fewest fixes, then lowest true APR.
+    apr = result.true_apr_pct if result.true_apr_pct is not None else result.apr_range[0]
     if result.status == "matched":
-        return (0, -(result.fit_score or 0), result.apr_range[0])
-    return (1, not result.quick_fix, len(result.fixes), result.apr_range[0])
+        fit = -(result.fit_score or 0)
+        return (0, apr, fit) if sort == "cost" else (0, fit, apr)
+    return (1, not result.quick_fix, len(result.fixes), apr)
 
 
-def recommend(profile: MatchInput, products: Iterable[LenderProduct]) -> list[MatchResult]:
-    """Evaluate every product and return them ranked, matched first."""
-    return sorted((evaluate(profile, product) for product in products), key=_rank_key)
+def recommend(profile: MatchInput, products: Iterable[LenderProduct], sort: SortOrder = "cost") -> list[MatchResult]:
+    """Evaluate every product and return them ranked, matched first, in the order the SME chose."""
+    return sorted((evaluate(profile, product) for product in products), key=lambda r: _rank_key(r, sort))

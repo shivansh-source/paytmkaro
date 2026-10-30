@@ -1,16 +1,11 @@
-import Link from "next/link";
+import "../dashboard.css";
 
-export default function RegisterPage() {
-  return (
-    <main className="plain-page">
-      <p className="eyebrow">Registration</p>
-      <h1 className="statement">Coming soon.</h1>
-      <p>The SME and lender registration flow and dashboard will live here.</p>
-      <p>
-        <Link href="/" className="gold">
-          ← Back to home
-        </Link>
-      </p>
-    </main>
-  );
+import { RegisterForm } from "../../components/auth/RegisterForm";
+import type { Role } from "../../lib/session";
+
+export const metadata = { title: "Sign in · CreditSetu" };
+
+export default function RegisterPage({ searchParams }: { searchParams: { role?: string } }) {
+  const role: Role | null = searchParams.role === "lender" ? "lender" : searchParams.role === "msme" ? "msme" : null;
+  return <RegisterForm initialRole={role} />;
 }

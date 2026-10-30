@@ -13,10 +13,10 @@ shortlist in under a day. The lender still makes the credit decision, on a compl
 - **Lakshya:** OCR / VLM extraction. Output contract: `DocumentEnvelope` (`schemas/v1/msme/`). Aadhaar
   is masked in his layer (Verhoeff on the full number, then only `aadhaar_last4` leaves it). Extracts raw
   values with confidence + bbox; does not "fix" misreads.
-- **Anansh:** lender side. Owns `schemas/v1/lender/lender_product.schema.json` and lender records.
+- **Anansh:** lender schema. Owns `schemas/v1/lender/lender_product.schema.json` and lender records.
 - **Shivansh (with Claude):** validation + cash-flow metrics + readiness (envelopes → `SmeProfile`),
-  recommendation engine, landing page, dashboards. Transaction tagging (bounce / EMI / NACH) from
-  narrations happens in validation, not extraction.
+  recommendation engine, landing page, login, the MSME dashboard **and the lender-side screens**.
+  Transaction tagging (bounce / EMI / NACH) from narrations happens in validation, not extraction.
 
 ## Product in brief
 
@@ -98,7 +98,41 @@ npm run dev                           # http://localhost:3000
 npm run build                         # must pass before committing
 ```
 
-The dev machine is Windows; Bash (Git Bash) and PowerShell are both available.
+The dashboard calls `/api/v1/*`, which `next.config.mjs` rewrites to FastAPI (`BACKEND_URL`, default
+`http://localhost:8000`), so run the backend alongside the frontend. No CORS setup needed.
+
+The dev machine is Windows; Bash (Git Bash) and PowerShell are both available. Port 3000 is often taken
+by the user's own dev server: use another port (e.g. 3100) for test runs, and kill only processes you
+started (stopping a background `npx next start` can leave an orphaned `node` holding the port).
+
+## Login + MSME dashboard (`frontend/app/register`, `frontend/app/msme`)
+
+Flow: landing → `/register` (role choice; `?role=lender|msme` pre-selects) → details → mock OTP
+(`123456`, shown on screen) → `/msme/upload` or `/lender`. Session in `localStorage`
+(`lib/session.ts`); no real auth for the hackathon.
+
+MSME screens (all client components inside `MsmeProvider`, which persists assessment, request, sort and
+matches to `localStorage` so a refresh mid-demo is safe):
+1. `/msme/upload`: 6 required documents + optional ITR-V. Extraction isn't wired yet, so a chosen file
+   shows "received, waiting for extraction"; **"Load sample applicant A / B"** runs the real pipeline
+   via `GET /v1/samples/{a|b}` → `POST /v1/assess`.
+2. `/msme/review`: cross-checks (name warning has "Yes, same person", which sets `user_confirmed` and
+   re-assesses; the backend then passes a near-match but never a different person), per-document
+   checks, fields with confidence, "Confirm" for low-confidence fields, and the exact rows that break
+   the balance math with the expected balance.
+3. `/msme/readiness`: odometer dial + ring (`ScoreDial`), components, fix-it list, metrics with source.
+4. `/msme/matches`: amount + tenure, **sort toggle "Lowest cost" (true APR incl. fees, default) /
+   "Best fit"**, caption states the active order, fit shown as a label (strong / good / just qualifies,
+   never a probability), fixes on "not yet" cards, **Apply** on amount quick fixes.
+5. `/msme/offer/[id]`: KFS: amount received, EMI, total payable, cost of credit, true APR vs quoted rate,
+   fees + GST, cooling-off, best/worst case, schedule.
+`/lender` is a placeholder; the lender screen is next.
+
+Styles: `app/dashboard.css` reuses the landing palette and fonts; calmer motion (one fade-in, the
+dial). Anything that could collide with landing classes is scoped under `.shell` / `.auth`, and the
+landing's lender-card list styles are scoped to `.example`, because Next keeps CSS loaded across
+client-side navigation. `lib/types.ts` mirrors the backend contracts the UI reads; `lib/format.ts` has
+`inr()` (Indian grouping), field labels and document metadata.
 
 ## API
 
@@ -107,10 +141,11 @@ The dev machine is Windows; Bash (Git Bash) and PowerShell are both available.
 | POST   | `/v1/documents`             | stub                                                     |
 | GET    | `/v1/profile/{sme_id}`      | stub (no storage yet)                                    |
 | POST   | `/v1/assess`                | envelopes → checked documents + `SmeProfile`             |
-| POST   | `/v1/match/profile`         | `SmeProfile` + `LoanRequest` → ranked lenders + fixes    |
+| POST   | `/v1/match/profile`         | `SmeProfile` + `LoanRequest` (+ `?sort=cost|fit`) → ranked lenders + fixes |
 | POST   | `/v1/match`                 | flat `MatchInput` → ranked lenders (for testing rules)   |
 | GET    | `/v1/lenders`               | lender products                                          |
 | GET    | `/v1/offers/{id}/explain`   | `?amount=&tenure_months=` → KFS numbers                  |
+| GET    | `/v1/samples/{a|b}`         | sample applicant as a ready `/v1/assess` body            |
 
 Demo flow: `/v1/assess` → `/v1/match/profile` → `/v1/offers/{id}/explain`. Nothing is persisted yet;
 the client passes the profile back. Storage + `sme_id`-based lookups come later.
@@ -199,7 +234,9 @@ optional (PDF→parser).
   - Any `fail` or `missing` check makes a product `not_yet`; check messages become the reasons
     ("Business vintage: needs at least 24 months, you have 14 months").
   - Fit score (matched only) = average headroom (0–1) across passing numeric thresholds × 100.
-  - Rank: matched by fit desc then APR asc; not-yet: quick fixes first, then fewest fixes, then APR.
+  - Rank: the SME chooses. `sort=cost` (default): matched by true APR incl. fees, then fit; `sort=fit`:
+    by fit, then true APR. Not-yet always after matched: quick fixes first, then fewest fixes, then APR.
+  - Each result carries `true_apr_pct` (best case, for the requested amount + tenure) and `fit_label`.
 - `lenders.py`: loads `data/lenders.json`.
 - `inr()` in `rules.py` formats rupees with Indian grouping (₹15,00,000).
 
@@ -207,9 +244,10 @@ optional (PDF→parser).
 add the field to `LenderProduct` (+ matching field on `MatchInput`, filled in `adapter.py`), add a rule to `RULES`, set it on
 the records that need it. Missing profile data is reported as `missing`, never guessed.
 
-Known open decision: "fit, then APR" ranks lenient expensive lenders above strict cheap ones (Applicant
-A sees Demo Bank A, the cheapest, last). Ranking matched products by APR with fit as tie-breaker is a
-one-line change in `_rank_key`; not decided yet.
+Ranking decision (settled): the borrower picks the order, defaulting to lowest true APR, and the UI says
+which order is active. Reason: "fit" alone ranks lenient expensive lenders above strict cheap ones, and
+an LSP should present matching offers in an unbiased, comparable way (check the exact RBI Digital Lending
+Directions wording before quoting it).
 
 Demo expectations (covered by tests, full pipeline from documents): Applicant A matches all 3 lenders;
 Applicant B is "not yet" for Demo Bank A with vintage / turnover / bureau / bounce fixes and matched for
