@@ -1,0 +1,1309 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:phonepekaro:lender-product-criteria:1.0.0",
+  "title": "PhonePeKaro Lender Product Criteria",
+  "description": "One record per lender product for the backend recommendation engine. Core fields follow backend/app/recommendation/models.py; optional policy and evidence fields support lender research. Omit unknown values or use null only where allowed. Published values, inferences and assumptions must remain distinguishable.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "lender",
+    "product",
+    "pricing"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable lender-product identifier; matches LenderProduct.id."
+    },
+    "lender": {
+      "type": "string",
+      "minLength": 1
+    },
+    "legal_entity_name": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "institution_type": {
+      "type": "string",
+      "enum": [
+        "bank",
+        "small_finance_bank",
+        "cooperative_bank",
+        "nbfc",
+        "platform",
+        "lsp",
+        "other",
+        "unknown"
+      ]
+    },
+    "institution_role": {
+      "type": "string",
+      "enum": [
+        "regulated_lender",
+        "lending_platform",
+        "lsp",
+        "channel_partner",
+        "unknown"
+      ]
+    },
+    "product": {
+      "type": "string",
+      "minLength": 1
+    },
+    "product_type": {
+      "type": "string",
+      "enum": [
+        "term_loan",
+        "working_capital",
+        "cash_credit",
+        "overdraft",
+        "dropline_overdraft",
+        "invoice_finance",
+        "equipment_finance",
+        "letter_of_credit",
+        "bank_guarantee",
+        "composite",
+        "other",
+        "unknown"
+      ]
+    },
+    "scheme": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "purpose": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "target_segment": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "eligible_sectors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "ticket_size": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/inrRange"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "ticket_size_tiers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/amountTier"
+      }
+    },
+    "ticket_size_conditions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "tenure_months": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/monthRange"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "tenure_by_facility": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/facilityTenure"
+      }
+    },
+    "moratorium_max_months": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "moratorium_included_in_tenure": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "repayment_frequency": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "repayment_modes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "repayment_on_demand": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "renewal_period_months": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "exclusiveMinimum": 0
+    },
+    "min_business_vintage_months": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "min_business_vintage_by_constitution": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/constitutionRule"
+      }
+    },
+    "min_annual_turnover": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "turnover_period_months": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "exclusiveMinimum": 0
+    },
+    "minimum_profit_history_months": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "profit_required": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "min_bureau_score": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 300,
+      "maximum": 900
+    },
+    "bureau_score_type": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "bureau_score_is_hard_cutoff": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "max_foir": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Ratio between 0 and 1."
+    },
+    "max_bounces_6m": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "commercial_cic_required": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "consumer_cic_required": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "credit_history_conditions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "loan_default_hard_filter": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "gst_required": {
+      "type": "boolean"
+    },
+    "udyam_required": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "udyam_preferred": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "gst_registration_vintage_months": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "min_bank_statement_months": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "max_bank_statement_months": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "itr_required": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "itr_years_required": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "business_registration_required": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "min_current_account_vintage_months": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "min_age_years": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "max_age_years": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "age_checked_at": {
+      "type": "string",
+      "enum": [
+        "application",
+        "sanction",
+        "maturity",
+        "disbursal",
+        "unknown"
+      ]
+    },
+    "allowed_constitutions": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "excluded_sectors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "excluded_entities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "negative_geographies": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "collateral": {
+      "type": "string",
+      "description": "Keep the current backend-compatible string, e.g. none, required, conditional, or detailed rule text."
+    },
+    "collateral_free_limit": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "collateral_conditions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "primary_security": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "personal_guarantee_required": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "credit_guarantee": {
+      "$ref": "#/$defs/guarantee"
+    },
+    "margin": {
+      "$ref": "#/$defs/margin"
+    },
+    "facilities_available": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "pricing": {
+      "$ref": "#/$defs/pricing"
+    },
+    "charges": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/charge"
+      }
+    },
+    "documents_required": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/documentRequirement"
+      }
+    },
+    "required_checks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "internal_score_thresholds": {
+      "$ref": "#/$defs/scoreThresholds"
+    },
+    "risk_gradation_factors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "eligibility_exceptions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/condition"
+      }
+    },
+    "negative_list_notes": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "approval_time_hours": {
+      "$ref": "#/$defs/numberRange"
+    },
+    "disbursal_time_hours": {
+      "$ref": "#/$defs/numberRange"
+    },
+    "kfs_requirements": {
+      "$ref": "#/$defs/kfsRequirements"
+    },
+    "cross_sell": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "application_languages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "data_consents": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "data_rights_notes": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "co_lending_or_partner_notes": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "source_records": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/sourceRecord"
+      }
+    },
+    "source_confidence": {
+      "type": "string",
+      "enum": [
+        "public",
+        "inferred",
+        "assumed",
+        "conflicting",
+        "unverified"
+      ]
+    },
+    "conflicts_and_gaps": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/conflict"
+      }
+    },
+    "effective_from": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date"
+    },
+    "effective_to": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date"
+    },
+    "last_verified_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date"
+    },
+    "record_status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "needs_review",
+        "approved",
+        "active",
+        "expired",
+        "archived"
+      ]
+    },
+    "extensions": {
+      "type": "object",
+      "description": "Namespaced fields for project-specific criteria not yet promoted into the stable schema.",
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "inrRange": {
+      "type": "object",
+      "required": [
+        "min",
+        "max"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "min": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "min_inclusive": {
+          "type": "boolean"
+        },
+        "max_inclusive": {
+          "type": "boolean"
+        }
+      }
+    },
+    "monthRange": {
+      "type": "object",
+      "required": [
+        "min",
+        "max"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "min": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "min_inclusive": {
+          "type": "boolean"
+        },
+        "max_inclusive": {
+          "type": "boolean"
+        }
+      }
+    },
+    "numberRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "min": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "max": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "unit": {
+          "type": "string"
+        }
+      }
+    },
+    "pricing": {
+      "type": "object",
+      "required": [
+        "apr_range",
+        "processing_fee_pct"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "apr_range": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "type": "number",
+              "minimum": 0
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "All-in APR percent per annum as [min,max]. Do not substitute nominal interest rate unless marked as a proxy."
+        },
+        "processing_fee_pct": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Percent points; use 2 for 2%, not 0.02."
+        },
+        "interest_rate_range_pct_pa": {
+          "$ref": "#/$defs/numberRange"
+        },
+        "apr_basis": {
+          "type": "string",
+          "enum": [
+            "all_in_apr",
+            "nominal_interest_rate_proxy",
+            "unknown"
+          ]
+        },
+        "interest_type": {
+          "type": "string",
+          "enum": [
+            "fixed",
+            "floating",
+            "hybrid",
+            "benchmark_linked",
+            "unknown"
+          ]
+        },
+        "interest_basis": {
+          "type": "string",
+          "enum": [
+            "reducing_balance",
+            "daily_reducing",
+            "flat",
+            "unknown"
+          ]
+        },
+        "benchmark": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "benchmark_rate_pct_pa": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "spread_pct_pa": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "reset_frequency_months": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "indicative_only": {
+          "type": "boolean"
+        },
+        "pricing_factors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "amountTier": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "min": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "max": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "min_inclusive": {
+          "type": "boolean"
+        },
+        "max_inclusive": {
+          "type": "boolean"
+        },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "facilityTenure": {
+      "type": "object",
+      "required": [
+        "facility"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "facility": {
+          "type": "string"
+        },
+        "min": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "max": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "moratorium_max_months": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "constitutionRule": {
+      "type": "object",
+      "required": [
+        "constitution"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "constitution": {
+          "type": "string"
+        },
+        "min_business_vintage_months": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "charge": {
+      "type": "object",
+      "required": [
+        "charge_type"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "charge_type": {
+          "type": "string"
+        },
+        "amount_inr": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "rate_pct": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "rate_pct_pa": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "basis": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "trigger": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "frequency": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tax_applicable": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "tax_included": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "source_record_index": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        }
+      }
+    },
+    "documentRequirement": {
+      "type": "object",
+      "required": [
+        "document_type"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "document_type": {
+          "type": "string"
+        },
+        "requiredness": {
+          "type": "string",
+          "enum": [
+            "mandatory",
+            "conditional",
+            "optional",
+            "additional_on_request",
+            "unknown"
+          ]
+        },
+        "applicant_scope": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lookback_months": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "accepted_formats": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "condition": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "validation_checks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "guarantee": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "scheme": {
+          "type": "string"
+        },
+        "coverage_pct": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "premium_borne_by": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "margin": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "working_capital_pct": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "term_loan_pct": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "tiers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "up_to_inr": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "margin_pct": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 100
+              },
+              "conditions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "scoreThresholds": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "overall_pct": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "subscore_pct": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "subheads": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "go_no_go_rule": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "condition": {
+      "type": "object",
+      "required": [
+        "description"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "applies_when": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "effect": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_record_index": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        }
+      }
+    },
+    "kfsRequirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kfs_required": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "unique_proposal_number_required": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "minimum_validity_working_days": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "apr_computation_required": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "amortization_schedule_required": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "third_party_charges_in_apr": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "summary_box_in_loan_agreement": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "borrower_explanation_acknowledgement_required": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "language_requirement": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "sourceRecord": {
+      "type": "object",
+      "required": [
+        "source_type",
+        "captured_at",
+        "confidence"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "source_type": {
+          "type": "string",
+          "enum": [
+            "official_product_page",
+            "official_eligibility_page",
+            "official_fees_page",
+            "official_kfs",
+            "official_mitc",
+            "official_policy",
+            "supplied_workbook",
+            "government_scheme_page",
+            "borrower_provided",
+            "lender_portal",
+            "inferred",
+            "assumed",
+            "other"
+          ]
+        },
+        "url": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri"
+        },
+        "document_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "locator": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "captured_at": {
+          "type": "string",
+          "format": "date"
+        },
+        "effective_from": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date"
+        },
+        "effective_to": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date"
+        },
+        "confidence": {
+          "type": "string",
+          "enum": [
+            "public",
+            "inferred",
+            "assumed",
+            "conflicting",
+            "unverified"
+          ]
+        },
+        "review_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "approved",
+            "rejected",
+            "needs_update"
+          ]
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "conflict": {
+      "type": "object",
+      "required": [
+        "field",
+        "description"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "field": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "source_record_indexes": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "resolution_status": {
+          "type": "string",
+          "enum": [
+            "unresolved",
+            "resolved",
+            "needs_lender_confirmation"
+          ]
+        },
+        "resolution_note": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
