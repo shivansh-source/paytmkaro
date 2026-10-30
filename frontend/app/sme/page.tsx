@@ -1,6 +1,6 @@
 export default function SmeJourneyPage() {
   return (
-    <main>
+    <main className="plain-page">
       <h2>SME Journey</h2>
       <ol>
         <li>Upload Aadhaar / PAN / GST / ITR / bank statement</li>
