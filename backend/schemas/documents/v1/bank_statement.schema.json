@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Bank Statement Extraction Schema v1",
+  "type": "object",
+  "required": [
+    "account_holder_name",
+    "account_number_last4",
+    "period_from",
+    "period_to"
+  ],
+  "properties": {
+    "account_holder_name": {
+      "maxLength": 160,
+      "minLength": 2,
+      "pattern": "^[A-Za-z0-9\\u0900-\\u0DFF][A-Za-z0-9\\u0900-\\u0DFF .,'&()/-]*$",
+      "type": "string"
+    },
+    "bank_name": {
+      "maxLength": 160,
+      "minLength": 2,
+      "pattern": "^[A-Za-z0-9\\u0900-\\u0DFF][A-Za-z0-9\\u0900-\\u0DFF .,'&()/-]*$",
+      "type": "string"
+    },
+    "ifsc": {
+      "pattern": "^[A-Z]{4}0[A-Z0-9]{6}$",
+      "type": "string"
+    },
+    "account_number_last4": {
+      "pattern": "^[0-9]{4}$",
+      "type": "string"
+    },
+    "period_from": {
+      "format": "date",
+      "type": "string"
+    },
+    "period_to": {
+      "format": "date",
+      "type": "string"
+    },
+    "opening_balance": {
+      "type": "number"
+    },
+    "closing_balance": {
+      "type": "number"
+    },
+    "transaction_count": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "total_credits": {
+      "minimum": 0,
+      "type": "number"
+    },
+    "total_debits": {
+      "minimum": 0,
+      "type": "number"
+    },
+    "months_covered": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "balance_breaks": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "missing_months": {
+      "items": {
+        "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$",
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "transactions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "date"
+        ],
+        "properties": {
+          "date": {
+            "format": "date",
+            "type": "string"
+          },
+          "narration": {
+            "type": "string"
+          },
+          "ref": {
+            "type": "string"
+          },
+          "debit": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "credit": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "balance": {
+            "type": "number"
+          },
+          "balance_ok": {
+            "type": "boolean"
+          },
+          "direction_inferred": {
+            "type": "boolean"
+          },
+          "source": {
+            "enum": [
+              "text_layer",
+              "ocr",
+              "vlm"
+            ],
+            "type": "string"
+          },
+          "page_index": {
+            "type": "integer"
+          },
+          "confidence": {
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          }
+        }
+      }
+    }
+  }
+}

@@ -2,11 +2,125 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "GST REG-06 Extraction Schema v1",
   "type": "object",
-  "required": ["gstin", "legal_name", "trade_name", "registration_date"],
+  "required": [
+    "gstin",
+    "legal_name",
+    "constitution_of_business",
+    "registration_date"
+  ],
   "properties": {
-    "gstin": { "type": "string", "pattern": "^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][A-Z0-9]Z[A-Z0-9]$" },
-    "legal_name": { "type": "string" },
-    "trade_name": { "type": "string" },
-    "registration_date": { "type": "string", "format": "date" }
+    "gstin": {
+      "pattern": "^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$",
+      "type": "string"
+    },
+    "pan_from_gstin": {
+      "pattern": "^[A-Z]{5}[0-9]{4}[A-Z]$",
+      "type": "string"
+    },
+    "state_code": {
+      "enum": [
+        "01",
+        "02",
+        "03",
+        "04",
+        "05",
+        "06",
+        "07",
+        "08",
+        "09",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "20",
+        "21",
+        "22",
+        "23",
+        "24",
+        "25",
+        "26",
+        "27",
+        "28",
+        "29",
+        "30",
+        "31",
+        "32",
+        "33",
+        "34",
+        "35",
+        "36",
+        "37",
+        "38",
+        "97",
+        "99"
+      ],
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "legal_name": {
+      "maxLength": 160,
+      "minLength": 2,
+      "pattern": "^[A-Za-z0-9\\u0900-\\u0DFF][A-Za-z0-9\\u0900-\\u0DFF .,'&()/-]*$",
+      "type": "string"
+    },
+    "trade_name": {
+      "maxLength": 160,
+      "minLength": 2,
+      "pattern": "^[A-Za-z0-9\\u0900-\\u0DFF][A-Za-z0-9\\u0900-\\u0DFF .,'&()/-]*$",
+      "type": "string"
+    },
+    "constitution_of_business": {
+      "enum": [
+        "aop",
+        "foreign_company",
+        "government",
+        "huf",
+        "llp",
+        "opc",
+        "partnership",
+        "proprietorship",
+        "public_ltd",
+        "pvt_ltd",
+        "society",
+        "trust",
+        "unlimited_company"
+      ],
+      "type": "string"
+    },
+    "date_of_liability": {
+      "format": "date",
+      "type": "string"
+    },
+    "validity_from": {
+      "format": "date",
+      "type": "string"
+    },
+    "registration_date": {
+      "format": "date",
+      "type": "string"
+    },
+    "address": {
+      "maxLength": 400,
+      "minLength": 8,
+      "type": "string"
+    },
+    "pincode": {
+      "pattern": "^[1-9][0-9]{5}$",
+      "type": "string"
+    },
+    "type_of_registration": {
+      "maxLength": 160,
+      "minLength": 2,
+      "pattern": "^[A-Za-z0-9\\u0900-\\u0DFF][A-Za-z0-9\\u0900-\\u0DFF .,'&()/-]*$",
+      "type": "string"
+    }
   }
 }

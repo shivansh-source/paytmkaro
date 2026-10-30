@@ -2,10 +2,46 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "PAN Card Extraction Schema v1",
   "type": "object",
-  "required": ["name", "pan", "dob"],
+  "required": [
+    "pan",
+    "name",
+    "dob"
+  ],
   "properties": {
-    "name": { "type": "string" },
-    "pan": { "type": "string", "pattern": "^[A-Z]{5}[0-9]{4}[A-Z]$" },
-    "dob": { "type": "string", "format": "date" }
+    "pan": {
+      "pattern": "^[A-Z]{5}[0-9]{4}[A-Z]$",
+      "type": "string"
+    },
+    "holder_type": {
+      "enum": [
+        "individual",
+        "company",
+        "huf",
+        "firm",
+        "aop",
+        "trust",
+        "boi",
+        "local_authority",
+        "artificial_juridical_person",
+        "government"
+      ],
+      "type": "string"
+    },
+    "name": {
+      "maxLength": 100,
+      "minLength": 2,
+      "pattern": "^[A-Za-z\\u0900-\\u0DFF][A-Za-z\\u0900-\\u0DFF .'-]*$",
+      "type": "string"
+    },
+    "father_name": {
+      "maxLength": 100,
+      "minLength": 2,
+      "pattern": "^[A-Za-z\\u0900-\\u0DFF][A-Za-z\\u0900-\\u0DFF .'-]*$",
+      "type": "string"
+    },
+    "dob": {
+      "format": "date",
+      "type": "string"
+    }
   }
 }
