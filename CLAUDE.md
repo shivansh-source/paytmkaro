@@ -45,12 +45,15 @@ backend/                 FastAPI (Python 3.13)
     main.py              creates the app, mounts /v1 router + /health
     config.py            paths (DATA_DIR, LENDERS_FILE)
     api/v1/              thin routes, one file per resource
+    schemas/             shared MSME data contracts (see "Schemas" below)
     recommendation/      lender matching engine (see below)
   data/
     lenders.json         mock lender products (edit freely; re-read on every request)
-    sample_profiles/     applicant_a.json (clean), applicant_b.json (messy)
-  schemas/documents/v1/  JSON schemas for document extraction (pan_card, gst_reg06)
+    sample_profiles/     MatchInput fixtures: applicant_a.json (clean), applicant_b.json (messy)
+  scripts/export_schemas.py   regenerates /schemas from the Pydantic models
   tests/                 pytest
+schemas/v1/msme/         GENERATED from Pydantic (never edit by hand)
+schemas/v1/lender/       HAND-WRITTEN lender JSON Schema: source of truth for the lender side
 frontend/                Next.js 14 app router, TypeScript, no Tailwind (plain CSS)
   app/page.tsx           landing page
   app/globals.css        all styles
@@ -93,14 +96,54 @@ The dev machine is Windows; Bash (Git Bash) and PowerShell are both available.
 | GET    | `/v1/lenders`               | working: lender products          |
 | GET    | `/v1/offers/{id}/explain`   | stub (KFS)                        |
 
-`/v1/match` currently takes the full `SMEProfile` in the body; later it should take an `sme_id` and load
+`/v1/match` currently takes a `MatchInput` in the body; later it should take an `sme_id` and load
 the validated profile.
+
+## Schemas (`backend/app/schemas/`)
+
+Shared contracts for extraction (OCR/VLM), validation, the MSME dashboard, the lender side and the
+engine. **The two sides have different sources of truth, on purpose:**
+
+- **MSME side: Pydantic is the source of truth.** After changing a model run
+  `python -m scripts.export_schemas` from `backend/`; `tests/test_schemas.py` fails if
+  `/schemas/v1/msme` is stale. Bump `SCHEMA_VERSION` on breaking changes.
+- **Lender side: JSON is the source of truth.** `schemas/v1/lender/lender_product.schema.json`
+  (hand-written by Anansh, JSON Schema draft 2020-12, 87 fields) is authoritative. `lender.py` mirrors
+  it as Pydantic (`LenderProduct`, `LenderCatalog`) for the engine. Change the JSON first, then mirror
+  it; `tests/test_lender_schema.py` fails on any drift (fields, required, enum values, all 16
+  sub-objects) and validates `backend/data/lenders.json` + the example against both. Never generate the
+  lender JSON from Python. `allowed_constitutions` uses the same values as MSME `Constitution`.
+- `common.py`: `Extracted[T]` (value + confidence + source + bbox + raw_text + user_confirmed, with a
+  computed `needs_review` when confidence < `REVIEW_CONFIDENCE` 0.85 or value missing),
+  `RowProvenance` (one per table row, not per cell), `Sourced[T]` (profile value + `EvidenceRef`s back
+  to document fields), `Check` (pass / warn / fail + plain-language message), enums (`DocumentType`,
+  `Source`, `Constitution`, `MsmeCategory`, `CrossCheck` ids), format regexes (PAN, GSTIN, IFSC, Udyam,
+  pincode).
+- `documents.py`: one model per document (`PanCard`, `Aadhaar`, `GstRegistration`, `Gstr3b`,
+  `BankStatement`, `Udyam`, `ItrV`) and `DocumentEnvelope` (file info, `Triage` = which extractor and
+  whether it fell back to VLM, status, checks, `data` discriminated by `document_type`).
+- `profile.py`: `SmeProfile` (identity, `CashflowMetrics`, `BureauScore` with source
+  mock/self_declared/bureau, document summaries, cross-checks, `Readiness` 0-100 with components,
+  `fix_it` list) and `LoanRequest` (kept separate: one profile, many requests).
+- `examples.py`: synthetic Applicant A objects used by tests and exported as example JSON.
+
+Conventions: money in rupees (float, compare with ₹0.01 tolerance); bbox coordinates are page
+fractions 0-1; extracted values are NOT pattern-constrained (a misread must be storable so validation
+can flag it); all models forbid unknown fields. **Privacy is enforced by types**: Aadhaar and bank
+account numbers are `Last4` (exactly 4 digits), so a full number cannot be stored.
+
+Demo documents: PAN (photo→VLM), Aadhaar (photo→VLM), GST REG-06 (PDF→parser), GSTR-3B 6 months
+(PDF→parser), bank statement 6-12 months (scanned PDF→OCR tables), Udyam (PDF or photo), ITR-V
+optional (PDF→parser).
 
 ## Recommendation engine (`backend/app/recommendation/`)
 
-- `models.py`: `SMEProfile` (engine input), `LenderProduct` (criteria + pricing), `CheckResult`,
-  `MatchResult`. Pydantic models are the single source of truth for the schema (see `/docs`); there is
-  no hand-written lender JSON schema.
+- `models.py`: `MatchInput` (flat engine input), `CheckResult`, `MatchResult`; re-exports the shared
+  `LenderProduct` from `app/schemas/lender.py`. The engine filters on a subset of lender fields today;
+  `itr_required`, `udyam_required`, `bureau_score_is_hard_cutoff`, `min_business_vintage_by_constitution`
+  etc. are in the schema but not yet ruled on.
+- `adapter.py`: `match_input(SmeProfile, LoanRequest) -> MatchInput`. The only place that knows both
+  shapes; if `SmeProfile` changes, change this.
 - `rules.py`: `RULES` list, one rule per criterion. Numeric min/max criteria are one `Threshold(...)`
   line; others are small functions. A rule returns `None` when the lender doesn't set that criterion.
 - `engine.py`: hard filters → fit score → rank.
@@ -112,7 +155,7 @@ the validated profile.
 - `inr()` in `rules.py` formats rupees with Indian grouping (₹15,00,000).
 
 **Schemas are not final.** Every lender criterion is optional (`null` = no requirement). To add one:
-add the field to `LenderProduct` (+ matching field on `SMEProfile`), add a rule to `RULES`, set it on
+add the field to `LenderProduct` (+ matching field on `MatchInput`, filled in `adapter.py`), add a rule to `RULES`, set it on
 the records that need it. Missing profile data is reported as `missing`, never guessed.
 
 Known open decision: "fit, then APR" ranks lenient expensive lenders above strict cheap ones (Applicant

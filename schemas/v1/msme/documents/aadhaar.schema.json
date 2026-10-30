@@ -1,0 +1,507 @@
+{
+  "$defs": {
+    "Address": {
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "city": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "City"
+        },
+        "district": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "District"
+        },
+        "state": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "State"
+        },
+        "pincode": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pincode"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "Address",
+      "type": "object"
+    },
+    "BBox": {
+      "additionalProperties": false,
+      "description": "Where on the page a value was read. Coordinates are fractions of page width/height.",
+      "properties": {
+        "page": {
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        },
+        "x0": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "X0",
+          "type": "number"
+        },
+        "y0": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Y0",
+          "type": "number"
+        },
+        "x1": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "X1",
+          "type": "number"
+        },
+        "y1": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Y1",
+          "type": "number"
+        }
+      },
+      "required": [
+        "page",
+        "x0",
+        "y0",
+        "x1",
+        "y1"
+      ],
+      "title": "BBox",
+      "type": "object"
+    },
+    "Extracted_Address_": {
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Address"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        },
+        "bbox": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BBox"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "raw_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Text"
+        },
+        "user_confirmed": {
+          "default": false,
+          "title": "User Confirmed",
+          "type": "boolean"
+        },
+        "needs_review": {
+          "readOnly": true,
+          "title": "Needs Review",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "value",
+        "confidence",
+        "source",
+        "needs_review"
+      ],
+      "title": "Extracted[Address]",
+      "type": "object"
+    },
+    "Extracted_Annotated_str__StringConstraints__": {
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9]{4}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        },
+        "bbox": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BBox"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "raw_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Text"
+        },
+        "user_confirmed": {
+          "default": false,
+          "title": "User Confirmed",
+          "type": "boolean"
+        },
+        "needs_review": {
+          "readOnly": true,
+          "title": "Needs Review",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "value",
+        "confidence",
+        "source",
+        "needs_review"
+      ],
+      "title": "Extracted[Annotated[str, StringConstraints]]",
+      "type": "object"
+    },
+    "Extracted_Literal__male____female____other___": {
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "enum": [
+                "male",
+                "female",
+                "other"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        },
+        "bbox": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BBox"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "raw_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Text"
+        },
+        "user_confirmed": {
+          "default": false,
+          "title": "User Confirmed",
+          "type": "boolean"
+        },
+        "needs_review": {
+          "readOnly": true,
+          "title": "Needs Review",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "value",
+        "confidence",
+        "source",
+        "needs_review"
+      ],
+      "title": "Extracted[Literal['male', 'female', 'other']]",
+      "type": "object"
+    },
+    "Extracted_date_": {
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        },
+        "bbox": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BBox"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "raw_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Text"
+        },
+        "user_confirmed": {
+          "default": false,
+          "title": "User Confirmed",
+          "type": "boolean"
+        },
+        "needs_review": {
+          "readOnly": true,
+          "title": "Needs Review",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "value",
+        "confidence",
+        "source",
+        "needs_review"
+      ],
+      "title": "Extracted[date]",
+      "type": "object"
+    },
+    "Extracted_str_": {
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        },
+        "bbox": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BBox"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "raw_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Text"
+        },
+        "user_confirmed": {
+          "default": false,
+          "title": "User Confirmed",
+          "type": "boolean"
+        },
+        "needs_review": {
+          "readOnly": true,
+          "title": "Needs Review",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "value",
+        "confidence",
+        "source",
+        "needs_review"
+      ],
+      "title": "Extracted[str]",
+      "type": "object"
+    },
+    "Source": {
+      "description": "Who produced a value.",
+      "enum": [
+        "parser",
+        "ocr",
+        "vlm",
+        "user",
+        "system"
+      ],
+      "title": "Source",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Masked at upload: the full number is checked (Verhoeff) and then discarded.",
+  "properties": {
+    "document_type": {
+      "const": "aadhaar",
+      "default": "aadhaar",
+      "title": "Document Type",
+      "type": "string"
+    },
+    "aadhaar_last4": {
+      "$ref": "#/$defs/Extracted_Annotated_str__StringConstraints__"
+    },
+    "verhoeff_valid": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Verhoeff Valid"
+    },
+    "name": {
+      "$ref": "#/$defs/Extracted_str_"
+    },
+    "dob": {
+      "$ref": "#/$defs/Extracted_date_"
+    },
+    "gender": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Extracted_Literal__male____female____other___"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "address": {
+      "$ref": "#/$defs/Extracted_Address_"
+    }
+  },
+  "required": [
+    "aadhaar_last4",
+    "name",
+    "dob",
+    "address"
+  ],
+  "title": "Aadhaar",
+  "type": "object",
+  "$id": "creditsetu/msme/v1/documents/aadhaar"
+}

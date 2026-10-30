@@ -3,13 +3,13 @@ import json
 import pytest
 
 from app.config import DATA_DIR
-from app.recommendation import LenderProduct, SMEProfile, evaluate, load_lender_products, recommend
+from app.recommendation import LenderProduct, MatchInput, evaluate, load_lender_products, recommend
 from app.recommendation.rules import inr
 
 
-def load_profile(name: str) -> SMEProfile:
+def load_profile(name: str) -> MatchInput:
     path = DATA_DIR / "sample_profiles" / f"{name}.json"
-    return SMEProfile.model_validate(json.loads(path.read_text(encoding="utf-8")))
+    return MatchInput.model_validate(json.loads(path.read_text(encoding="utf-8")))
 
 
 @pytest.fixture
@@ -50,7 +50,7 @@ def test_messy_applicant_gets_specific_not_yet_reasons(products):
 
 
 def test_missing_profile_data_blocks_instead_of_guessing():
-    profile = SMEProfile(sme_id="x", requested_amount=500000, bureau_score=None)
+    profile = MatchInput(sme_id="x", requested_amount=500000, bureau_score=None)
     result = evaluate(profile, make_product(min_bureau_score=700))
 
     assert result.status == "not_yet"
@@ -59,7 +59,7 @@ def test_missing_profile_data_blocks_instead_of_guessing():
 
 
 def test_unset_criteria_are_skipped():
-    profile = SMEProfile(sme_id="x", requested_amount=500000)
+    profile = MatchInput(sme_id="x", requested_amount=500000)
     result = evaluate(profile, make_product())
 
     assert result.checks == []
@@ -68,15 +68,15 @@ def test_unset_criteria_are_skipped():
 
 def test_fit_score_reflects_headroom():
     product = make_product(min_business_vintage_months=12, max_foir=0.5)
-    barely = evaluate(SMEProfile(sme_id="x", requested_amount=1, business_vintage_months=12, foir=0.5), product)
-    comfortably = evaluate(SMEProfile(sme_id="x", requested_amount=1, business_vintage_months=24, foir=0.0), product)
+    barely = evaluate(MatchInput(sme_id="x", requested_amount=1, business_vintage_months=12, foir=0.5), product)
+    comfortably = evaluate(MatchInput(sme_id="x", requested_amount=1, business_vintage_months=24, foir=0.0), product)
 
     assert barely.fit_score == 0.0
     assert comfortably.fit_score == 100.0
 
 
 def test_ties_on_fit_rank_by_cheapest_apr():
-    profile = SMEProfile(sme_id="x", requested_amount=500000)
+    profile = MatchInput(sme_id="x", requested_amount=500000)
     cheap = make_product(id="cheap", pricing={"apr_range": [14, 18], "processing_fee_pct": 1})
     pricey = make_product(id="pricey", pricing={"apr_range": [24, 30], "processing_fee_pct": 1})
 

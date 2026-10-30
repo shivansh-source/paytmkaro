@@ -1,0 +1,902 @@
+{
+  "$defs": {
+    "Address": {
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "city": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "City"
+        },
+        "district": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "District"
+        },
+        "state": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "State"
+        },
+        "pincode": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pincode"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "Address",
+      "type": "object"
+    },
+    "BBox": {
+      "additionalProperties": false,
+      "description": "Where on the page a value was read. Coordinates are fractions of page width/height.",
+      "properties": {
+        "page": {
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        },
+        "x0": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "X0",
+          "type": "number"
+        },
+        "y0": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Y0",
+          "type": "number"
+        },
+        "x1": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "X1",
+          "type": "number"
+        },
+        "y1": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Y1",
+          "type": "number"
+        }
+      },
+      "required": [
+        "page",
+        "x0",
+        "y0",
+        "x1",
+        "y1"
+      ],
+      "title": "BBox",
+      "type": "object"
+    },
+    "BureauScore": {
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "maximum": 900,
+          "minimum": 300,
+          "title": "Value",
+          "type": "integer"
+        },
+        "source": {
+          "enum": [
+            "mock",
+            "self_declared",
+            "bureau"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "as_of": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "As Of"
+        }
+      },
+      "required": [
+        "value",
+        "source"
+      ],
+      "title": "BureauScore",
+      "type": "object"
+    },
+    "CashflowMetrics": {
+      "additionalProperties": false,
+      "description": "Deterministic metrics from bank statements and GSTR-3B. None = not computable yet.",
+      "properties": {
+        "months_analyzed": {
+          "minimum": 0,
+          "title": "Months Analyzed",
+          "type": "integer"
+        },
+        "avg_monthly_balance": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Sourced_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "avg_monthly_credits": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Sourced_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "bounces_6m": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Sourced_int_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "existing_emi_monthly": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Sourced_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "foir": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Sourced_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "gst_turnover_12m": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Sourced_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "gst_vs_bank_ratio": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Sourced_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "months_analyzed"
+      ],
+      "title": "CashflowMetrics",
+      "type": "object"
+    },
+    "Check": {
+      "additionalProperties": false,
+      "description": "One ✓ / ⚠ / ✗ result with a plain-language message for the SME.",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/CheckStatus"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "document_ids": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Document Ids",
+          "type": "array"
+        },
+        "fields": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Fields",
+          "type": "array"
+        },
+        "expected": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expected"
+        },
+        "actual": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Actual"
+        }
+      },
+      "required": [
+        "id",
+        "status",
+        "message"
+      ],
+      "title": "Check",
+      "type": "object"
+    },
+    "CheckStatus": {
+      "enum": [
+        "pass",
+        "warn",
+        "fail"
+      ],
+      "title": "CheckStatus",
+      "type": "string"
+    },
+    "Constitution": {
+      "enum": [
+        "proprietorship",
+        "partnership",
+        "llp",
+        "pvt_ltd",
+        "public_ltd",
+        "huf",
+        "trust",
+        "society",
+        "other"
+      ],
+      "title": "Constitution",
+      "type": "string"
+    },
+    "DocumentSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "document_id": {
+          "title": "Document Id",
+          "type": "string"
+        },
+        "document_type": {
+          "$ref": "#/$defs/DocumentType"
+        },
+        "status": {
+          "enum": [
+            "queued",
+            "extracting",
+            "needs_review",
+            "verified",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "document_id",
+        "document_type",
+        "status"
+      ],
+      "title": "DocumentSummary",
+      "type": "object"
+    },
+    "DocumentType": {
+      "enum": [
+        "pan_card",
+        "aadhaar",
+        "gst_registration",
+        "gstr3b",
+        "bank_statement",
+        "udyam",
+        "itr_v"
+      ],
+      "title": "DocumentType",
+      "type": "string"
+    },
+    "EvidenceRef": {
+      "additionalProperties": false,
+      "description": "Points a profile value back to the document field it came from.",
+      "properties": {
+        "document_id": {
+          "title": "Document Id",
+          "type": "string"
+        },
+        "field": {
+          "title": "Field",
+          "type": "string"
+        },
+        "bbox": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BBox"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "document_id",
+        "field"
+      ],
+      "title": "EvidenceRef",
+      "type": "object"
+    },
+    "FixItItem": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "priority": {
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ],
+          "title": "Priority",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "detail": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Detail"
+        },
+        "action": {
+          "enum": [
+            "upload",
+            "re_upload",
+            "confirm_field",
+            "add_info"
+          ],
+          "title": "Action",
+          "type": "string"
+        },
+        "check_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Check Id"
+        },
+        "document_type": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DocumentType"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "id",
+        "priority",
+        "title",
+        "action"
+      ],
+      "title": "FixItItem",
+      "type": "object"
+    },
+    "Identity": {
+      "additionalProperties": false,
+      "properties": {
+        "legal_name": {
+          "$ref": "#/$defs/Sourced_str_"
+        },
+        "trade_name": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Sourced_str_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "constitution": {
+          "$ref": "#/$defs/Sourced_Constitution_"
+        },
+        "pan": {
+          "$ref": "#/$defs/Sourced_str_"
+        },
+        "gstin": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Sourced_str_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "udyam_number": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Sourced_str_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "msme_category": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Sourced_MsmeCategory_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "date_of_incorporation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Sourced_date_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "business_vintage_months": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Sourced_int_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "address": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Sourced_Address_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "sector": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sector"
+        }
+      },
+      "required": [
+        "legal_name",
+        "constitution",
+        "pan"
+      ],
+      "title": "Identity",
+      "type": "object"
+    },
+    "MsmeCategory": {
+      "enum": [
+        "micro",
+        "small",
+        "medium"
+      ],
+      "title": "MsmeCategory",
+      "type": "string"
+    },
+    "Readiness": {
+      "additionalProperties": false,
+      "description": "0-100, computed in code. The LLM may explain it but never sets it.",
+      "properties": {
+        "score": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Score",
+          "type": "integer"
+        },
+        "band": {
+          "enum": [
+            "not_ready",
+            "almost_ready",
+            "ready"
+          ],
+          "title": "Band",
+          "type": "string"
+        },
+        "components": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ReadinessComponent"
+          },
+          "title": "Components",
+          "type": "array"
+        }
+      },
+      "required": [
+        "score",
+        "band"
+      ],
+      "title": "Readiness",
+      "type": "object"
+    },
+    "ReadinessComponent": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "points": {
+          "minimum": 0,
+          "title": "Points",
+          "type": "number"
+        },
+        "max_points": {
+          "exclusiveMinimum": 0,
+          "title": "Max Points",
+          "type": "number"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        }
+      },
+      "required": [
+        "name",
+        "points",
+        "max_points"
+      ],
+      "title": "ReadinessComponent",
+      "type": "object"
+    },
+    "Sourced_Address_": {
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "$ref": "#/$defs/Address"
+        },
+        "evidence": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "title": "Evidence",
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "title": "Sourced[Address]",
+      "type": "object"
+    },
+    "Sourced_Constitution_": {
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "$ref": "#/$defs/Constitution"
+        },
+        "evidence": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "title": "Evidence",
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "title": "Sourced[Constitution]",
+      "type": "object"
+    },
+    "Sourced_MsmeCategory_": {
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "$ref": "#/$defs/MsmeCategory"
+        },
+        "evidence": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "title": "Evidence",
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "title": "Sourced[MsmeCategory]",
+      "type": "object"
+    },
+    "Sourced_date_": {
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "format": "date",
+          "title": "Value",
+          "type": "string"
+        },
+        "evidence": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "title": "Evidence",
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "title": "Sourced[date]",
+      "type": "object"
+    },
+    "Sourced_float_": {
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "title": "Value",
+          "type": "number"
+        },
+        "evidence": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "title": "Evidence",
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "title": "Sourced[float]",
+      "type": "object"
+    },
+    "Sourced_int_": {
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "title": "Value",
+          "type": "integer"
+        },
+        "evidence": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "title": "Evidence",
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "title": "Sourced[int]",
+      "type": "object"
+    },
+    "Sourced_str_": {
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "title": "Value",
+          "type": "string"
+        },
+        "evidence": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "title": "Evidence",
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "title": "Sourced[str]",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "sme_id": {
+      "title": "Sme Id",
+      "type": "string"
+    },
+    "updated_at": {
+      "format": "date-time",
+      "title": "Updated At",
+      "type": "string"
+    },
+    "identity": {
+      "$ref": "#/$defs/Identity"
+    },
+    "cashflow": {
+      "$ref": "#/$defs/CashflowMetrics"
+    },
+    "bureau": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/BureauScore"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "documents": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/DocumentSummary"
+      },
+      "title": "Documents",
+      "type": "array"
+    },
+    "cross_checks": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Check"
+      },
+      "title": "Cross Checks",
+      "type": "array"
+    },
+    "readiness": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Readiness"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "fix_it": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/FixItItem"
+      },
+      "title": "Fix It",
+      "type": "array"
+    }
+  },
+  "required": [
+    "sme_id",
+    "updated_at",
+    "identity",
+    "cashflow"
+  ],
+  "title": "SmeProfile",
+  "type": "object",
+  "$id": "creditsetu/msme/v1/sme_profile"
+}

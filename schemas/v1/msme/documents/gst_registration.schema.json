@@ -1,0 +1,442 @@
+{
+  "$defs": {
+    "Address": {
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "city": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "City"
+        },
+        "district": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "District"
+        },
+        "state": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "State"
+        },
+        "pincode": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pincode"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "Address",
+      "type": "object"
+    },
+    "BBox": {
+      "additionalProperties": false,
+      "description": "Where on the page a value was read. Coordinates are fractions of page width/height.",
+      "properties": {
+        "page": {
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        },
+        "x0": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "X0",
+          "type": "number"
+        },
+        "y0": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Y0",
+          "type": "number"
+        },
+        "x1": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "X1",
+          "type": "number"
+        },
+        "y1": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Y1",
+          "type": "number"
+        }
+      },
+      "required": [
+        "page",
+        "x0",
+        "y0",
+        "x1",
+        "y1"
+      ],
+      "title": "BBox",
+      "type": "object"
+    },
+    "Constitution": {
+      "enum": [
+        "proprietorship",
+        "partnership",
+        "llp",
+        "pvt_ltd",
+        "public_ltd",
+        "huf",
+        "trust",
+        "society",
+        "other"
+      ],
+      "title": "Constitution",
+      "type": "string"
+    },
+    "Extracted_Address_": {
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Address"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        },
+        "bbox": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BBox"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "raw_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Text"
+        },
+        "user_confirmed": {
+          "default": false,
+          "title": "User Confirmed",
+          "type": "boolean"
+        },
+        "needs_review": {
+          "readOnly": true,
+          "title": "Needs Review",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "value",
+        "confidence",
+        "source",
+        "needs_review"
+      ],
+      "title": "Extracted[Address]",
+      "type": "object"
+    },
+    "Extracted_Constitution_": {
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Constitution"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        },
+        "bbox": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BBox"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "raw_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Text"
+        },
+        "user_confirmed": {
+          "default": false,
+          "title": "User Confirmed",
+          "type": "boolean"
+        },
+        "needs_review": {
+          "readOnly": true,
+          "title": "Needs Review",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "value",
+        "confidence",
+        "source",
+        "needs_review"
+      ],
+      "title": "Extracted[Constitution]",
+      "type": "object"
+    },
+    "Extracted_date_": {
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        },
+        "bbox": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BBox"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "raw_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Text"
+        },
+        "user_confirmed": {
+          "default": false,
+          "title": "User Confirmed",
+          "type": "boolean"
+        },
+        "needs_review": {
+          "readOnly": true,
+          "title": "Needs Review",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "value",
+        "confidence",
+        "source",
+        "needs_review"
+      ],
+      "title": "Extracted[date]",
+      "type": "object"
+    },
+    "Extracted_str_": {
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        },
+        "bbox": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BBox"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "raw_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Text"
+        },
+        "user_confirmed": {
+          "default": false,
+          "title": "User Confirmed",
+          "type": "boolean"
+        },
+        "needs_review": {
+          "readOnly": true,
+          "title": "Needs Review",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "value",
+        "confidence",
+        "source",
+        "needs_review"
+      ],
+      "title": "Extracted[str]",
+      "type": "object"
+    },
+    "Source": {
+      "description": "Who produced a value.",
+      "enum": [
+        "parser",
+        "ocr",
+        "vlm",
+        "user",
+        "system"
+      ],
+      "title": "Source",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "GST REG-06 certificate.",
+  "properties": {
+    "document_type": {
+      "const": "gst_registration",
+      "default": "gst_registration",
+      "title": "Document Type",
+      "type": "string"
+    },
+    "gstin": {
+      "$ref": "#/$defs/Extracted_str_"
+    },
+    "legal_name": {
+      "$ref": "#/$defs/Extracted_str_"
+    },
+    "trade_name": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Extracted_str_"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "constitution": {
+      "$ref": "#/$defs/Extracted_Constitution_"
+    },
+    "registration_date": {
+      "$ref": "#/$defs/Extracted_date_"
+    },
+    "principal_address": {
+      "$ref": "#/$defs/Extracted_Address_"
+    }
+  },
+  "required": [
+    "gstin",
+    "legal_name",
+    "constitution",
+    "registration_date",
+    "principal_address"
+  ],
+  "title": "GstRegistration",
+  "type": "object",
+  "$id": "creditsetu/msme/v1/documents/gst_registration"
+}

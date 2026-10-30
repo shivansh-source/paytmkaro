@@ -1,0 +1,480 @@
+{
+  "$defs": {
+    "BBox": {
+      "additionalProperties": false,
+      "description": "Where on the page a value was read. Coordinates are fractions of page width/height.",
+      "properties": {
+        "page": {
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        },
+        "x0": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "X0",
+          "type": "number"
+        },
+        "y0": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Y0",
+          "type": "number"
+        },
+        "x1": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "X1",
+          "type": "number"
+        },
+        "y1": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Y1",
+          "type": "number"
+        }
+      },
+      "required": [
+        "page",
+        "x0",
+        "y0",
+        "x1",
+        "y1"
+      ],
+      "title": "BBox",
+      "type": "object"
+    },
+    "Extracted_Annotated_str__StringConstraints__": {
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9]{4}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        },
+        "bbox": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BBox"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "raw_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Text"
+        },
+        "user_confirmed": {
+          "default": false,
+          "title": "User Confirmed",
+          "type": "boolean"
+        },
+        "needs_review": {
+          "readOnly": true,
+          "title": "Needs Review",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "value",
+        "confidence",
+        "source",
+        "needs_review"
+      ],
+      "title": "Extracted[Annotated[str, StringConstraints]]",
+      "type": "object"
+    },
+    "Extracted_date_": {
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        },
+        "bbox": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BBox"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "raw_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Text"
+        },
+        "user_confirmed": {
+          "default": false,
+          "title": "User Confirmed",
+          "type": "boolean"
+        },
+        "needs_review": {
+          "readOnly": true,
+          "title": "Needs Review",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "value",
+        "confidence",
+        "source",
+        "needs_review"
+      ],
+      "title": "Extracted[date]",
+      "type": "object"
+    },
+    "Extracted_float_": {
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        },
+        "bbox": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BBox"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "raw_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Text"
+        },
+        "user_confirmed": {
+          "default": false,
+          "title": "User Confirmed",
+          "type": "boolean"
+        },
+        "needs_review": {
+          "readOnly": true,
+          "title": "Needs Review",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "value",
+        "confidence",
+        "source",
+        "needs_review"
+      ],
+      "title": "Extracted[float]",
+      "type": "object"
+    },
+    "Extracted_str_": {
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        },
+        "bbox": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BBox"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "raw_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Text"
+        },
+        "user_confirmed": {
+          "default": false,
+          "title": "User Confirmed",
+          "type": "boolean"
+        },
+        "needs_review": {
+          "readOnly": true,
+          "title": "Needs Review",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "value",
+        "confidence",
+        "source",
+        "needs_review"
+      ],
+      "title": "Extracted[str]",
+      "type": "object"
+    },
+    "RowProvenance": {
+      "additionalProperties": false,
+      "description": "Provenance for one table row (transactions, GSTR-3B months): one record per row, not per cell.",
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/Source"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "bbox": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BBox"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "source",
+        "confidence"
+      ],
+      "title": "RowProvenance",
+      "type": "object"
+    },
+    "Source": {
+      "description": "Who produced a value.",
+      "enum": [
+        "parser",
+        "ocr",
+        "vlm",
+        "user",
+        "system"
+      ],
+      "title": "Source",
+      "type": "string"
+    },
+    "Transaction": {
+      "additionalProperties": false,
+      "properties": {
+        "date": {
+          "format": "date",
+          "title": "Date",
+          "type": "string"
+        },
+        "narration": {
+          "title": "Narration",
+          "type": "string"
+        },
+        "debit": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Debit",
+          "type": "number"
+        },
+        "credit": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Credit",
+          "type": "number"
+        },
+        "balance": {
+          "title": "Balance",
+          "type": "number"
+        },
+        "tags": {
+          "default": [],
+          "items": {
+            "enum": [
+              "bounce",
+              "emi",
+              "nach",
+              "charges",
+              "cash",
+              "upi",
+              "gst_payment"
+            ],
+            "type": "string"
+          },
+          "title": "Tags",
+          "type": "array"
+        },
+        "provenance": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RowProvenance"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "date",
+        "narration",
+        "balance"
+      ],
+      "title": "Transaction",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "document_type": {
+      "const": "bank_statement",
+      "default": "bank_statement",
+      "title": "Document Type",
+      "type": "string"
+    },
+    "account_holder_name": {
+      "$ref": "#/$defs/Extracted_str_"
+    },
+    "account_number_last4": {
+      "$ref": "#/$defs/Extracted_Annotated_str__StringConstraints__"
+    },
+    "ifsc": {
+      "$ref": "#/$defs/Extracted_str_"
+    },
+    "bank_name": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Extracted_str_"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "period_from": {
+      "$ref": "#/$defs/Extracted_date_"
+    },
+    "period_to": {
+      "$ref": "#/$defs/Extracted_date_"
+    },
+    "opening_balance": {
+      "$ref": "#/$defs/Extracted_float_"
+    },
+    "closing_balance": {
+      "$ref": "#/$defs/Extracted_float_"
+    },
+    "transactions": {
+      "items": {
+        "$ref": "#/$defs/Transaction"
+      },
+      "title": "Transactions",
+      "type": "array"
+    }
+  },
+  "required": [
+    "account_holder_name",
+    "account_number_last4",
+    "ifsc",
+    "period_from",
+    "period_to",
+    "opening_balance",
+    "closing_balance",
+    "transactions"
+  ],
+  "title": "BankStatement",
+  "type": "object",
+  "$id": "creditsetu/msme/v1/documents/bank_statement"
+}

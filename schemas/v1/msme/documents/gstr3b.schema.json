@@ -1,0 +1,242 @@
+{
+  "$defs": {
+    "BBox": {
+      "additionalProperties": false,
+      "description": "Where on the page a value was read. Coordinates are fractions of page width/height.",
+      "properties": {
+        "page": {
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        },
+        "x0": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "X0",
+          "type": "number"
+        },
+        "y0": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Y0",
+          "type": "number"
+        },
+        "x1": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "X1",
+          "type": "number"
+        },
+        "y1": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Y1",
+          "type": "number"
+        }
+      },
+      "required": [
+        "page",
+        "x0",
+        "y0",
+        "x1",
+        "y1"
+      ],
+      "title": "BBox",
+      "type": "object"
+    },
+    "Extracted_str_": {
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        },
+        "bbox": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BBox"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "raw_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Text"
+        },
+        "user_confirmed": {
+          "default": false,
+          "title": "User Confirmed",
+          "type": "boolean"
+        },
+        "needs_review": {
+          "readOnly": true,
+          "title": "Needs Review",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "value",
+        "confidence",
+        "source",
+        "needs_review"
+      ],
+      "title": "Extracted[str]",
+      "type": "object"
+    },
+    "Gstr3bMonth": {
+      "additionalProperties": false,
+      "properties": {
+        "period": {
+          "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$",
+          "title": "Period",
+          "type": "string"
+        },
+        "outward_taxable_value": {
+          "minimum": 0,
+          "title": "Outward Taxable Value",
+          "type": "number"
+        },
+        "filing_date": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Filing Date"
+        },
+        "due_date": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Due Date"
+        },
+        "provenance": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RowProvenance"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "period",
+        "outward_taxable_value"
+      ],
+      "title": "Gstr3bMonth",
+      "type": "object"
+    },
+    "RowProvenance": {
+      "additionalProperties": false,
+      "description": "Provenance for one table row (transactions, GSTR-3B months): one record per row, not per cell.",
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/Source"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "bbox": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BBox"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "source",
+        "confidence"
+      ],
+      "title": "RowProvenance",
+      "type": "object"
+    },
+    "Source": {
+      "description": "Who produced a value.",
+      "enum": [
+        "parser",
+        "ocr",
+        "vlm",
+        "user",
+        "system"
+      ],
+      "title": "Source",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "One or more monthly GSTR-3B returns for the same GSTIN.",
+  "properties": {
+    "document_type": {
+      "const": "gstr3b",
+      "default": "gstr3b",
+      "title": "Document Type",
+      "type": "string"
+    },
+    "gstin": {
+      "$ref": "#/$defs/Extracted_str_"
+    },
+    "months": {
+      "items": {
+        "$ref": "#/$defs/Gstr3bMonth"
+      },
+      "title": "Months",
+      "type": "array"
+    }
+  },
+  "required": [
+    "gstin",
+    "months"
+  ],
+  "title": "Gstr3b",
+  "type": "object",
+  "$id": "creditsetu/msme/v1/documents/gstr3b"
+}

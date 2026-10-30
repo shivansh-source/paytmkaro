@@ -1,8 +1,9 @@
 """Data contracts for the recommendation engine.
 
-Field sets are still being decided. Every lender criterion is optional, where
-None means "this lender has no such requirement", so a new criterion can be
-added here (plus one rule in rules.py) without editing existing lender records.
+Lender records use the shared LenderProduct (app.schemas.lender, mirrored from
+/schemas/v1/lender/lender_product.schema.json). Every criterion is optional: None
+means "this lender has no such requirement". To filter on a new criterion, add a
+rule in rules.py (and the profile field to MatchInput + adapter.py).
 """
 
 from __future__ import annotations
@@ -11,40 +12,14 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from app.schemas.lender import LenderProduct
 
-class Range(BaseModel):
-    min: int = Field(ge=0)
-    max: int = Field(ge=0)
-
-
-class Pricing(BaseModel):
-    apr_range: tuple[float, float]
-    processing_fee_pct: float = Field(ge=0)
+__all__ = ["CheckResult", "LenderProduct", "MatchInput", "MatchResult"]
 
 
-class LenderProduct(BaseModel):
-    """One lender product's eligibility criteria and pricing."""
-
-    id: str = Field(min_length=1)
-    lender: str
-    product: str
-    ticket_size: Range | None = None
-    tenure_months: Range | None = None
-    min_business_vintage_months: int | None = Field(default=None, ge=0)
-    min_annual_turnover: int | None = Field(default=None, ge=0)
-    min_bureau_score: int | None = Field(default=None, ge=300, le=900)
-    max_foir: float | None = Field(default=None, ge=0, le=1)
-    max_bounces_6m: int | None = Field(default=None, ge=0)
-    gst_required: bool = False
-    allowed_constitutions: list[str] | None = None
-    excluded_sectors: list[str] = []
-    collateral: str = "none"
-    scheme: str | None = None
-    pricing: Pricing
-
-
-class SMEProfile(BaseModel):
-    """Features the engine matches on, as produced by the cash-flow scoring stage.
+class MatchInput(BaseModel):
+    """Flat features the engine matches on. Build it from an SmeProfile + LoanRequest with
+    recommendation.adapter.match_input(); /v1/match also accepts it directly.
 
     None means "not known yet" (document missing or not extracted). Rules report
     that as missing data instead of guessing.

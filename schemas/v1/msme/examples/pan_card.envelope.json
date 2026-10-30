@@ -1,0 +1,93 @@
+{
+  "schema_version": "1.0",
+  "document_id": "doc-pan-a",
+  "sme_id": "SAMPLE-A",
+  "document_type": "pan_card",
+  "status": "verified",
+  "uploaded_at": "2026-10-30T10:00:00Z",
+  "file": {
+    "file_name": "pan.jpg",
+    "mime_type": "image/jpeg",
+    "size_bytes": 412000,
+    "pages": 1,
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "triage": {
+    "input_kind": "photo",
+    "extractor": "vlm",
+    "fell_back_to_vlm": false,
+    "fallback_reason": null,
+    "ocr_mean_confidence": null,
+    "password_protected": false
+  },
+  "data": {
+    "document_type": "pan_card",
+    "pan_number": {
+      "value": "ABCPK1234F",
+      "confidence": 0.97,
+      "source": "vlm",
+      "bbox": {
+        "page": 1,
+        "x0": 0.12,
+        "y0": 0.42,
+        "x1": 0.48,
+        "y1": 0.49
+      },
+      "raw_text": null,
+      "user_confirmed": false,
+      "needs_review": false
+    },
+    "name": {
+      "value": "RAVI KUMAR",
+      "confidence": 0.95,
+      "source": "vlm",
+      "bbox": null,
+      "raw_text": null,
+      "user_confirmed": false,
+      "needs_review": false
+    },
+    "father_name": {
+      "value": "SURESH KUMAR",
+      "confidence": 0.91,
+      "source": "vlm",
+      "bbox": null,
+      "raw_text": null,
+      "user_confirmed": false,
+      "needs_review": false
+    },
+    "dob": {
+      "value": "1986-04-12",
+      "confidence": 0.93,
+      "source": "vlm",
+      "bbox": null,
+      "raw_text": null,
+      "user_confirmed": false,
+      "needs_review": false
+    }
+  },
+  "checks": [
+    {
+      "id": "pan.format",
+      "status": "pass",
+      "message": "PAN format is valid",
+      "document_ids": [],
+      "fields": [
+        "data.pan_number"
+      ],
+      "expected": null,
+      "actual": null
+    },
+    {
+      "id": "pan.holder_type",
+      "status": "pass",
+      "message": "4th letter P: PAN belongs to an individual, as expected for a proprietorship",
+      "document_ids": [],
+      "fields": [
+        "data.pan_number"
+      ],
+      "expected": null,
+      "actual": null
+    }
+  ],
+  "error": null
+}

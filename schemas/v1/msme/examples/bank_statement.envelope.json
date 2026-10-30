@@ -1,0 +1,146 @@
+{
+  "schema_version": "1.0",
+  "document_id": "doc-bank-a",
+  "sme_id": "SAMPLE-A",
+  "document_type": "bank_statement",
+  "status": "verified",
+  "uploaded_at": "2026-10-30T10:00:00Z",
+  "file": {
+    "file_name": "statement.pdf",
+    "mime_type": "application/pdf",
+    "size_bytes": 1830000,
+    "pages": 14,
+    "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "triage": {
+    "input_kind": "scanned_pdf",
+    "extractor": "ocr",
+    "fell_back_to_vlm": false,
+    "fallback_reason": null,
+    "ocr_mean_confidence": 0.93,
+    "password_protected": false
+  },
+  "data": {
+    "document_type": "bank_statement",
+    "account_holder_name": {
+      "value": "RAVI KUMAR",
+      "confidence": 0.96,
+      "source": "ocr",
+      "bbox": null,
+      "raw_text": null,
+      "user_confirmed": false,
+      "needs_review": false
+    },
+    "account_number_last4": {
+      "value": "4821",
+      "confidence": 0.98,
+      "source": "ocr",
+      "bbox": null,
+      "raw_text": null,
+      "user_confirmed": false,
+      "needs_review": false
+    },
+    "ifsc": {
+      "value": "SMPL0001234",
+      "confidence": 0.97,
+      "source": "ocr",
+      "bbox": null,
+      "raw_text": null,
+      "user_confirmed": false,
+      "needs_review": false
+    },
+    "bank_name": null,
+    "period_from": {
+      "value": "2025-10-01",
+      "confidence": 0.99,
+      "source": "ocr",
+      "bbox": null,
+      "raw_text": null,
+      "user_confirmed": false,
+      "needs_review": false
+    },
+    "period_to": {
+      "value": "2026-09-30",
+      "confidence": 0.99,
+      "source": "ocr",
+      "bbox": null,
+      "raw_text": null,
+      "user_confirmed": false,
+      "needs_review": false
+    },
+    "opening_balance": {
+      "value": 152400.0,
+      "confidence": 0.97,
+      "source": "ocr",
+      "bbox": null,
+      "raw_text": null,
+      "user_confirmed": false,
+      "needs_review": false
+    },
+    "closing_balance": {
+      "value": 171900.0,
+      "confidence": 0.97,
+      "source": "ocr",
+      "bbox": null,
+      "raw_text": null,
+      "user_confirmed": false,
+      "needs_review": false
+    },
+    "transactions": [
+      {
+        "date": "2025-10-03",
+        "narration": "UPI/CR/SAMPLE TRADERS",
+        "debit": 0.0,
+        "credit": 42000.0,
+        "balance": 194400.0,
+        "tags": [
+          "upi"
+        ],
+        "provenance": {
+          "source": "ocr",
+          "confidence": 0.94,
+          "bbox": null
+        }
+      },
+      {
+        "date": "2025-10-05",
+        "narration": "NACH/DR/SAMPLE NBFC EMI",
+        "debit": 18500.0,
+        "credit": 0.0,
+        "balance": 175900.0,
+        "tags": [
+          "nach",
+          "emi"
+        ],
+        "provenance": {
+          "source": "ocr",
+          "confidence": 0.94,
+          "bbox": null
+        }
+      }
+    ]
+  },
+  "checks": [
+    {
+      "id": "bank.ifsc_format",
+      "status": "pass",
+      "message": "IFSC format is valid",
+      "document_ids": [],
+      "fields": [
+        "data.ifsc"
+      ],
+      "expected": null,
+      "actual": null
+    },
+    {
+      "id": "cross.balance_math",
+      "status": "pass",
+      "message": "Every row adds up",
+      "document_ids": [],
+      "fields": [],
+      "expected": null,
+      "actual": null
+    }
+  ],
+  "error": null
+}

@@ -7,13 +7,11 @@ only needs an iterable of LenderProduct.
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from app.config import LENDERS_FILE
-from app.recommendation.models import LenderProduct
+from app.schemas.lender import LenderCatalog, LenderProduct
 
 
 def load_lender_products(path: Path = LENDERS_FILE) -> list[LenderProduct]:
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    return [LenderProduct.model_validate(item) for item in payload["products"]]
+    return LenderCatalog.model_validate_json(path.read_text(encoding="utf-8")).products

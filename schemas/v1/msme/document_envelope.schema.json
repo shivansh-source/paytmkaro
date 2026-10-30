@@ -1,0 +1,1550 @@
+{
+  "$defs": {
+    "Aadhaar": {
+      "additionalProperties": false,
+      "description": "Masked at upload: the full number is checked (Verhoeff) and then discarded.",
+      "properties": {
+        "document_type": {
+          "const": "aadhaar",
+          "default": "aadhaar",
+          "title": "Document Type",
+          "type": "string"
+        },
+        "aadhaar_last4": {
+          "$ref": "#/$defs/Extracted_Annotated_str__StringConstraints__"
+        },
+        "verhoeff_valid": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Verhoeff Valid"
+        },
+        "name": {
+          "$ref": "#/$defs/Extracted_str_"
+        },
+        "dob": {
+          "$ref": "#/$defs/Extracted_date_"
+        },
+        "gender": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_Literal__male____female____other___"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "address": {
+          "$ref": "#/$defs/Extracted_Address_"
+        }
+      },
+      "required": [
+        "aadhaar_last4",
+        "name",
+        "dob",
+        "address"
+      ],
+      "title": "Aadhaar",
+      "type": "object"
+    },
+    "Address": {
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "city": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "City"
+        },
+        "district": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "District"
+        },
+        "state": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "State"
+        },
+        "pincode": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pincode"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "Address",
+      "type": "object"
+    },
+    "BBox": {
+      "additionalProperties": false,
+      "description": "Where on the page a value was read. Coordinates are fractions of page width/height.",
+      "properties": {
+        "page": {
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        },
+        "x0": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "X0",
+          "type": "number"
+        },
+        "y0": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Y0",
+          "type": "number"
+        },
+        "x1": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "X1",
+          "type": "number"
+        },
+        "y1": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Y1",
+          "type": "number"
+        }
+      },
+      "required": [
+        "page",
+        "x0",
+        "y0",
+        "x1",
+        "y1"
+      ],
+      "title": "BBox",
+      "type": "object"
+    },
+    "BankStatement": {
+      "additionalProperties": false,
+      "properties": {
+        "document_type": {
+          "const": "bank_statement",
+          "default": "bank_statement",
+          "title": "Document Type",
+          "type": "string"
+        },
+        "account_holder_name": {
+          "$ref": "#/$defs/Extracted_str_"
+        },
+        "account_number_last4": {
+          "$ref": "#/$defs/Extracted_Annotated_str__StringConstraints__"
+        },
+        "ifsc": {
+          "$ref": "#/$defs/Extracted_str_"
+        },
+        "bank_name": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_str_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "period_from": {
+          "$ref": "#/$defs/Extracted_date_"
+        },
+        "period_to": {
+          "$ref": "#/$defs/Extracted_date_"
+        },
+        "opening_balance": {
+          "$ref": "#/$defs/Extracted_float_"
+        },
+        "closing_balance": {
+          "$ref": "#/$defs/Extracted_float_"
+        },
+        "transactions": {
+          "items": {
+            "$ref": "#/$defs/Transaction"
+          },
+          "title": "Transactions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "account_holder_name",
+        "account_number_last4",
+        "ifsc",
+        "period_from",
+        "period_to",
+        "opening_balance",
+        "closing_balance",
+        "transactions"
+      ],
+      "title": "BankStatement",
+      "type": "object"
+    },
+    "Check": {
+      "additionalProperties": false,
+      "description": "One ✓ / ⚠ / ✗ result with a plain-language message for the SME.",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/CheckStatus"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "document_ids": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Document Ids",
+          "type": "array"
+        },
+        "fields": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Fields",
+          "type": "array"
+        },
+        "expected": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expected"
+        },
+        "actual": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Actual"
+        }
+      },
+      "required": [
+        "id",
+        "status",
+        "message"
+      ],
+      "title": "Check",
+      "type": "object"
+    },
+    "CheckStatus": {
+      "enum": [
+        "pass",
+        "warn",
+        "fail"
+      ],
+      "title": "CheckStatus",
+      "type": "string"
+    },
+    "Constitution": {
+      "enum": [
+        "proprietorship",
+        "partnership",
+        "llp",
+        "pvt_ltd",
+        "public_ltd",
+        "huf",
+        "trust",
+        "society",
+        "other"
+      ],
+      "title": "Constitution",
+      "type": "string"
+    },
+    "DocumentType": {
+      "enum": [
+        "pan_card",
+        "aadhaar",
+        "gst_registration",
+        "gstr3b",
+        "bank_statement",
+        "udyam",
+        "itr_v"
+      ],
+      "title": "DocumentType",
+      "type": "string"
+    },
+    "Extracted_Address_": {
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Address"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        },
+        "bbox": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BBox"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "raw_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Text"
+        },
+        "user_confirmed": {
+          "default": false,
+          "title": "User Confirmed",
+          "type": "boolean"
+        },
+        "needs_review": {
+          "readOnly": true,
+          "title": "Needs Review",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "value",
+        "confidence",
+        "source",
+        "needs_review"
+      ],
+      "title": "Extracted[Address]",
+      "type": "object"
+    },
+    "Extracted_Annotated_str__StringConstraints__": {
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9]{4}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        },
+        "bbox": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BBox"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "raw_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Text"
+        },
+        "user_confirmed": {
+          "default": false,
+          "title": "User Confirmed",
+          "type": "boolean"
+        },
+        "needs_review": {
+          "readOnly": true,
+          "title": "Needs Review",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "value",
+        "confidence",
+        "source",
+        "needs_review"
+      ],
+      "title": "Extracted[Annotated[str, StringConstraints]]",
+      "type": "object"
+    },
+    "Extracted_Constitution_": {
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Constitution"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        },
+        "bbox": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BBox"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "raw_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Text"
+        },
+        "user_confirmed": {
+          "default": false,
+          "title": "User Confirmed",
+          "type": "boolean"
+        },
+        "needs_review": {
+          "readOnly": true,
+          "title": "Needs Review",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "value",
+        "confidence",
+        "source",
+        "needs_review"
+      ],
+      "title": "Extracted[Constitution]",
+      "type": "object"
+    },
+    "Extracted_Literal__male____female____other___": {
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "enum": [
+                "male",
+                "female",
+                "other"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        },
+        "bbox": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BBox"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "raw_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Text"
+        },
+        "user_confirmed": {
+          "default": false,
+          "title": "User Confirmed",
+          "type": "boolean"
+        },
+        "needs_review": {
+          "readOnly": true,
+          "title": "Needs Review",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "value",
+        "confidence",
+        "source",
+        "needs_review"
+      ],
+      "title": "Extracted[Literal['male', 'female', 'other']]",
+      "type": "object"
+    },
+    "Extracted_Literal__manufacturing____services____trading___": {
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "enum": [
+                "manufacturing",
+                "services",
+                "trading"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        },
+        "bbox": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BBox"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "raw_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Text"
+        },
+        "user_confirmed": {
+          "default": false,
+          "title": "User Confirmed",
+          "type": "boolean"
+        },
+        "needs_review": {
+          "readOnly": true,
+          "title": "Needs Review",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "value",
+        "confidence",
+        "source",
+        "needs_review"
+      ],
+      "title": "Extracted[Literal['manufacturing', 'services', 'trading']]",
+      "type": "object"
+    },
+    "Extracted_MsmeCategory_": {
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MsmeCategory"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        },
+        "bbox": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BBox"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "raw_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Text"
+        },
+        "user_confirmed": {
+          "default": false,
+          "title": "User Confirmed",
+          "type": "boolean"
+        },
+        "needs_review": {
+          "readOnly": true,
+          "title": "Needs Review",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "value",
+        "confidence",
+        "source",
+        "needs_review"
+      ],
+      "title": "Extracted[MsmeCategory]",
+      "type": "object"
+    },
+    "Extracted_date_": {
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        },
+        "bbox": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BBox"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "raw_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Text"
+        },
+        "user_confirmed": {
+          "default": false,
+          "title": "User Confirmed",
+          "type": "boolean"
+        },
+        "needs_review": {
+          "readOnly": true,
+          "title": "Needs Review",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "value",
+        "confidence",
+        "source",
+        "needs_review"
+      ],
+      "title": "Extracted[date]",
+      "type": "object"
+    },
+    "Extracted_float_": {
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        },
+        "bbox": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BBox"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "raw_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Text"
+        },
+        "user_confirmed": {
+          "default": false,
+          "title": "User Confirmed",
+          "type": "boolean"
+        },
+        "needs_review": {
+          "readOnly": true,
+          "title": "Needs Review",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "value",
+        "confidence",
+        "source",
+        "needs_review"
+      ],
+      "title": "Extracted[float]",
+      "type": "object"
+    },
+    "Extracted_str_": {
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        },
+        "bbox": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BBox"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "raw_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Text"
+        },
+        "user_confirmed": {
+          "default": false,
+          "title": "User Confirmed",
+          "type": "boolean"
+        },
+        "needs_review": {
+          "readOnly": true,
+          "title": "Needs Review",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "value",
+        "confidence",
+        "source",
+        "needs_review"
+      ],
+      "title": "Extracted[str]",
+      "type": "object"
+    },
+    "FileInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "file_name": {
+          "title": "File Name",
+          "type": "string"
+        },
+        "mime_type": {
+          "title": "Mime Type",
+          "type": "string"
+        },
+        "size_bytes": {
+          "minimum": 0,
+          "title": "Size Bytes",
+          "type": "integer"
+        },
+        "pages": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pages"
+        },
+        "sha256": {
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "file_name",
+        "mime_type",
+        "size_bytes",
+        "sha256"
+      ],
+      "title": "FileInfo",
+      "type": "object"
+    },
+    "GstRegistration": {
+      "additionalProperties": false,
+      "description": "GST REG-06 certificate.",
+      "properties": {
+        "document_type": {
+          "const": "gst_registration",
+          "default": "gst_registration",
+          "title": "Document Type",
+          "type": "string"
+        },
+        "gstin": {
+          "$ref": "#/$defs/Extracted_str_"
+        },
+        "legal_name": {
+          "$ref": "#/$defs/Extracted_str_"
+        },
+        "trade_name": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_str_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "constitution": {
+          "$ref": "#/$defs/Extracted_Constitution_"
+        },
+        "registration_date": {
+          "$ref": "#/$defs/Extracted_date_"
+        },
+        "principal_address": {
+          "$ref": "#/$defs/Extracted_Address_"
+        }
+      },
+      "required": [
+        "gstin",
+        "legal_name",
+        "constitution",
+        "registration_date",
+        "principal_address"
+      ],
+      "title": "GstRegistration",
+      "type": "object"
+    },
+    "Gstr3b": {
+      "additionalProperties": false,
+      "description": "One or more monthly GSTR-3B returns for the same GSTIN.",
+      "properties": {
+        "document_type": {
+          "const": "gstr3b",
+          "default": "gstr3b",
+          "title": "Document Type",
+          "type": "string"
+        },
+        "gstin": {
+          "$ref": "#/$defs/Extracted_str_"
+        },
+        "months": {
+          "items": {
+            "$ref": "#/$defs/Gstr3bMonth"
+          },
+          "title": "Months",
+          "type": "array"
+        }
+      },
+      "required": [
+        "gstin",
+        "months"
+      ],
+      "title": "Gstr3b",
+      "type": "object"
+    },
+    "Gstr3bMonth": {
+      "additionalProperties": false,
+      "properties": {
+        "period": {
+          "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$",
+          "title": "Period",
+          "type": "string"
+        },
+        "outward_taxable_value": {
+          "minimum": 0,
+          "title": "Outward Taxable Value",
+          "type": "number"
+        },
+        "filing_date": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Filing Date"
+        },
+        "due_date": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Due Date"
+        },
+        "provenance": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RowProvenance"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "period",
+        "outward_taxable_value"
+      ],
+      "title": "Gstr3bMonth",
+      "type": "object"
+    },
+    "ItrV": {
+      "additionalProperties": false,
+      "properties": {
+        "document_type": {
+          "const": "itr_v",
+          "default": "itr_v",
+          "title": "Document Type",
+          "type": "string"
+        },
+        "pan_number": {
+          "$ref": "#/$defs/Extracted_str_"
+        },
+        "assessment_year": {
+          "$ref": "#/$defs/Extracted_str_"
+        },
+        "itr_form": {
+          "$ref": "#/$defs/Extracted_str_"
+        },
+        "gross_total_income": {
+          "$ref": "#/$defs/Extracted_float_"
+        },
+        "acknowledgement_number": {
+          "$ref": "#/$defs/Extracted_str_"
+        },
+        "filing_date": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_date_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "pan_number",
+        "assessment_year",
+        "itr_form",
+        "gross_total_income",
+        "acknowledgement_number"
+      ],
+      "title": "ItrV",
+      "type": "object"
+    },
+    "MsmeCategory": {
+      "enum": [
+        "micro",
+        "small",
+        "medium"
+      ],
+      "title": "MsmeCategory",
+      "type": "string"
+    },
+    "PanCard": {
+      "additionalProperties": false,
+      "properties": {
+        "document_type": {
+          "const": "pan_card",
+          "default": "pan_card",
+          "title": "Document Type",
+          "type": "string"
+        },
+        "pan_number": {
+          "$ref": "#/$defs/Extracted_str_"
+        },
+        "name": {
+          "$ref": "#/$defs/Extracted_str_"
+        },
+        "father_name": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_str_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "dob": {
+          "$ref": "#/$defs/Extracted_date_"
+        }
+      },
+      "required": [
+        "pan_number",
+        "name",
+        "dob"
+      ],
+      "title": "PanCard",
+      "type": "object"
+    },
+    "RowProvenance": {
+      "additionalProperties": false,
+      "description": "Provenance for one table row (transactions, GSTR-3B months): one record per row, not per cell.",
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/Source"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "bbox": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BBox"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "source",
+        "confidence"
+      ],
+      "title": "RowProvenance",
+      "type": "object"
+    },
+    "Source": {
+      "description": "Who produced a value.",
+      "enum": [
+        "parser",
+        "ocr",
+        "vlm",
+        "user",
+        "system"
+      ],
+      "title": "Source",
+      "type": "string"
+    },
+    "Transaction": {
+      "additionalProperties": false,
+      "properties": {
+        "date": {
+          "format": "date",
+          "title": "Date",
+          "type": "string"
+        },
+        "narration": {
+          "title": "Narration",
+          "type": "string"
+        },
+        "debit": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Debit",
+          "type": "number"
+        },
+        "credit": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Credit",
+          "type": "number"
+        },
+        "balance": {
+          "title": "Balance",
+          "type": "number"
+        },
+        "tags": {
+          "default": [],
+          "items": {
+            "enum": [
+              "bounce",
+              "emi",
+              "nach",
+              "charges",
+              "cash",
+              "upi",
+              "gst_payment"
+            ],
+            "type": "string"
+          },
+          "title": "Tags",
+          "type": "array"
+        },
+        "provenance": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RowProvenance"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "date",
+        "narration",
+        "balance"
+      ],
+      "title": "Transaction",
+      "type": "object"
+    },
+    "Triage": {
+      "additionalProperties": false,
+      "description": "Which extractor the triage step chose, and whether it had to fall back.",
+      "properties": {
+        "input_kind": {
+          "enum": [
+            "digital_pdf",
+            "scanned_pdf",
+            "photo"
+          ],
+          "title": "Input Kind",
+          "type": "string"
+        },
+        "extractor": {
+          "enum": [
+            "parser",
+            "ocr",
+            "vlm"
+          ],
+          "title": "Extractor",
+          "type": "string"
+        },
+        "fell_back_to_vlm": {
+          "default": false,
+          "title": "Fell Back To Vlm",
+          "type": "boolean"
+        },
+        "fallback_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fallback Reason"
+        },
+        "ocr_mean_confidence": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ocr Mean Confidence"
+        },
+        "password_protected": {
+          "default": false,
+          "title": "Password Protected",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "input_kind",
+        "extractor"
+      ],
+      "title": "Triage",
+      "type": "object"
+    },
+    "Udyam": {
+      "additionalProperties": false,
+      "properties": {
+        "document_type": {
+          "const": "udyam",
+          "default": "udyam",
+          "title": "Document Type",
+          "type": "string"
+        },
+        "udyam_number": {
+          "$ref": "#/$defs/Extracted_str_"
+        },
+        "enterprise_name": {
+          "$ref": "#/$defs/Extracted_str_"
+        },
+        "enterprise_type": {
+          "$ref": "#/$defs/Extracted_MsmeCategory_"
+        },
+        "major_activity": {
+          "$ref": "#/$defs/Extracted_Literal__manufacturing____services____trading___"
+        },
+        "date_of_incorporation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_date_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "date_of_registration": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_date_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "address": {
+          "$ref": "#/$defs/Extracted_Address_"
+        }
+      },
+      "required": [
+        "udyam_number",
+        "enterprise_name",
+        "enterprise_type",
+        "major_activity",
+        "address"
+      ],
+      "title": "Udyam",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "document_id": {
+      "title": "Document Id",
+      "type": "string"
+    },
+    "sme_id": {
+      "title": "Sme Id",
+      "type": "string"
+    },
+    "document_type": {
+      "$ref": "#/$defs/DocumentType"
+    },
+    "status": {
+      "enum": [
+        "queued",
+        "extracting",
+        "needs_review",
+        "verified",
+        "failed"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "uploaded_at": {
+      "format": "date-time",
+      "title": "Uploaded At",
+      "type": "string"
+    },
+    "file": {
+      "$ref": "#/$defs/FileInfo"
+    },
+    "triage": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Triage"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "data": {
+      "anyOf": [
+        {
+          "discriminator": {
+            "mapping": {
+              "aadhaar": "#/$defs/Aadhaar",
+              "bank_statement": "#/$defs/BankStatement",
+              "gst_registration": "#/$defs/GstRegistration",
+              "gstr3b": "#/$defs/Gstr3b",
+              "itr_v": "#/$defs/ItrV",
+              "pan_card": "#/$defs/PanCard",
+              "udyam": "#/$defs/Udyam"
+            },
+            "propertyName": "document_type"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/PanCard"
+            },
+            {
+              "$ref": "#/$defs/Aadhaar"
+            },
+            {
+              "$ref": "#/$defs/GstRegistration"
+            },
+            {
+              "$ref": "#/$defs/Gstr3b"
+            },
+            {
+              "$ref": "#/$defs/BankStatement"
+            },
+            {
+              "$ref": "#/$defs/Udyam"
+            },
+            {
+              "$ref": "#/$defs/ItrV"
+            }
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Data"
+    },
+    "checks": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Check"
+      },
+      "title": "Checks",
+      "type": "array"
+    },
+    "error": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Error"
+    }
+  },
+  "required": [
+    "document_id",
+    "sme_id",
+    "document_type",
+    "status",
+    "uploaded_at",
+    "file"
+  ],
+  "title": "DocumentEnvelope",
+  "type": "object",
+  "$id": "creditsetu/msme/v1/document_envelope"
+}

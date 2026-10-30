@@ -1,0 +1,309 @@
+{
+  "schema_version": "1.0",
+  "sme_id": "SAMPLE-A",
+  "updated_at": "2026-10-30T10:00:00Z",
+  "identity": {
+    "legal_name": {
+      "value": "RAVI KUMAR",
+      "evidence": [
+        {
+          "document_id": "doc-gst-a",
+          "field": "data.legal_name",
+          "bbox": null
+        }
+      ]
+    },
+    "trade_name": {
+      "value": "SAMPLE KUMAR STORES",
+      "evidence": [
+        {
+          "document_id": "doc-gst-a",
+          "field": "data.trade_name",
+          "bbox": null
+        }
+      ]
+    },
+    "constitution": {
+      "value": "proprietorship",
+      "evidence": [
+        {
+          "document_id": "doc-gst-a",
+          "field": "data.constitution",
+          "bbox": null
+        }
+      ]
+    },
+    "pan": {
+      "value": "ABCPK1234F",
+      "evidence": [
+        {
+          "document_id": "doc-pan-a",
+          "field": "data.pan_number",
+          "bbox": null
+        }
+      ]
+    },
+    "gstin": {
+      "value": "29ABCPK1234F1Z5",
+      "evidence": [
+        {
+          "document_id": "doc-gst-a",
+          "field": "data.gstin",
+          "bbox": null
+        }
+      ]
+    },
+    "udyam_number": {
+      "value": "UDYAM-KA-03-0001234",
+      "evidence": [
+        {
+          "document_id": "doc-udyam-a",
+          "field": "data.udyam_number",
+          "bbox": null
+        }
+      ]
+    },
+    "msme_category": {
+      "value": "micro",
+      "evidence": [
+        {
+          "document_id": "doc-udyam-a",
+          "field": "data.enterprise_type",
+          "bbox": null
+        }
+      ]
+    },
+    "date_of_incorporation": {
+      "value": "2023-08-01",
+      "evidence": [
+        {
+          "document_id": "doc-udyam-a",
+          "field": "data.date_of_incorporation",
+          "bbox": null
+        }
+      ]
+    },
+    "business_vintage_months": {
+      "value": 38,
+      "evidence": [
+        {
+          "document_id": "doc-udyam-a",
+          "field": "data.date_of_incorporation",
+          "bbox": null
+        }
+      ]
+    },
+    "address": {
+      "value": {
+        "text": "SAMPLE, 12 Gandhi Bazaar Main Road, Basavanagudi, Bengaluru, Karnataka 560004",
+        "city": "Bengaluru",
+        "district": "Bengaluru Urban",
+        "state": "Karnataka",
+        "pincode": "560004"
+      },
+      "evidence": [
+        {
+          "document_id": "doc-gst-a",
+          "field": "data.principal_address",
+          "bbox": null
+        }
+      ]
+    },
+    "sector": "retail"
+  },
+  "cashflow": {
+    "months_analyzed": 12,
+    "avg_monthly_balance": {
+      "value": 186400.0,
+      "evidence": [
+        {
+          "document_id": "doc-bank-a",
+          "field": "data.transactions",
+          "bbox": null
+        }
+      ]
+    },
+    "avg_monthly_credits": {
+      "value": 205000.0,
+      "evidence": [
+        {
+          "document_id": "doc-bank-a",
+          "field": "data.transactions",
+          "bbox": null
+        }
+      ]
+    },
+    "bounces_6m": {
+      "value": 0,
+      "evidence": [
+        {
+          "document_id": "doc-bank-a",
+          "field": "data.transactions",
+          "bbox": null
+        }
+      ]
+    },
+    "existing_emi_monthly": {
+      "value": 51250.0,
+      "evidence": [
+        {
+          "document_id": "doc-bank-a",
+          "field": "data.transactions",
+          "bbox": null
+        }
+      ]
+    },
+    "foir": {
+      "value": 0.25,
+      "evidence": [
+        {
+          "document_id": "doc-bank-a",
+          "field": "data.transactions",
+          "bbox": null
+        }
+      ]
+    },
+    "gst_turnover_12m": {
+      "value": 2400000.0,
+      "evidence": [
+        {
+          "document_id": "doc-gstr3b-a",
+          "field": "data.months",
+          "bbox": null
+        }
+      ]
+    },
+    "gst_vs_bank_ratio": {
+      "value": 0.98,
+      "evidence": [
+        {
+          "document_id": "doc-gstr3b-a",
+          "field": "data.months",
+          "bbox": null
+        },
+        {
+          "document_id": "doc-bank-a",
+          "field": "data.transactions",
+          "bbox": null
+        }
+      ]
+    }
+  },
+  "bureau": {
+    "value": 760,
+    "source": "mock",
+    "as_of": null
+  },
+  "documents": [
+    {
+      "document_id": "doc-pan-a",
+      "document_type": "pan_card",
+      "status": "verified"
+    },
+    {
+      "document_id": "doc-bank-a",
+      "document_type": "bank_statement",
+      "status": "verified"
+    }
+  ],
+  "cross_checks": [
+    {
+      "id": "cross.pan_in_gstin",
+      "status": "pass",
+      "message": "PAN inside GSTIN matches your PAN card",
+      "document_ids": [
+        "doc-pan-a",
+        "doc-gst-a"
+      ],
+      "fields": [],
+      "expected": null,
+      "actual": null
+    },
+    {
+      "id": "cross.name_match",
+      "status": "pass",
+      "message": "Name matches on PAN, Aadhaar, GST and bank account",
+      "document_ids": [],
+      "fields": [],
+      "expected": null,
+      "actual": null
+    },
+    {
+      "id": "cross.dob_match",
+      "status": "pass",
+      "message": "Date of birth matches on PAN and Aadhaar",
+      "document_ids": [],
+      "fields": [],
+      "expected": null,
+      "actual": null
+    },
+    {
+      "id": "cross.address_match",
+      "status": "pass",
+      "message": "Address matches on Aadhaar, GST and Udyam",
+      "document_ids": [],
+      "fields": [],
+      "expected": null,
+      "actual": null
+    },
+    {
+      "id": "cross.gst_vs_bank",
+      "status": "pass",
+      "message": "GST turnover is within 2% of bank credits",
+      "document_ids": [],
+      "fields": [],
+      "expected": null,
+      "actual": null
+    },
+    {
+      "id": "cross.balance_math",
+      "status": "pass",
+      "message": "Every bank statement row adds up",
+      "document_ids": [],
+      "fields": [],
+      "expected": null,
+      "actual": null
+    }
+  ],
+  "readiness": {
+    "score": 82,
+    "band": "ready",
+    "components": [
+      {
+        "name": "Documents complete",
+        "points": 25.0,
+        "max_points": 25.0,
+        "note": null
+      },
+      {
+        "name": "Identity verified",
+        "points": 25.0,
+        "max_points": 25.0,
+        "note": null
+      },
+      {
+        "name": "Cash flow",
+        "points": 20.0,
+        "max_points": 30.0,
+        "note": null
+      },
+      {
+        "name": "Credit history",
+        "points": 12.0,
+        "max_points": 20.0,
+        "note": "Bureau score is mocked"
+      }
+    ]
+  },
+  "fix_it": [
+    {
+      "id": "fix-itr",
+      "priority": "low",
+      "title": "Add your ITR-V to unlock lenders that ask for it",
+      "detail": null,
+      "action": "upload",
+      "check_id": null,
+      "document_type": "itr_v"
+    }
+  ]
+}

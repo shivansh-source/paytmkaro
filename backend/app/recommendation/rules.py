@@ -2,7 +2,7 @@
 
 A rule takes (profile, product) and returns a CheckResult, or None when the
 lender does not set that criterion. To add a criterion: add the field to
-LenderProduct (and the profile field it is compared with to SMEProfile), then
+LenderProduct (and the profile field it is compared with to MatchInput), then
 add one entry to RULES.
 """
 
@@ -12,9 +12,9 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
-from app.recommendation.models import CheckResult, LenderProduct, SMEProfile
+from app.recommendation.models import CheckResult, LenderProduct, MatchInput
 
-Rule = Callable[[SMEProfile, LenderProduct], CheckResult | None]
+Rule = Callable[[MatchInput, LenderProduct], CheckResult | None]
 
 
 def inr(amount: float) -> str:
@@ -51,7 +51,7 @@ class Threshold:
     label: str
     fmt: Callable[[Any], str] = str
 
-    def __call__(self, profile: SMEProfile, product: LenderProduct) -> CheckResult | None:
+    def __call__(self, profile: MatchInput, product: LenderProduct) -> CheckResult | None:
         required = getattr(product, self.criterion)
         if required is None:
             return None
@@ -87,7 +87,7 @@ class Threshold:
         )
 
 
-def ticket_size(profile: SMEProfile, product: LenderProduct) -> CheckResult | None:
+def ticket_size(profile: MatchInput, product: LenderProduct) -> CheckResult | None:
     if product.ticket_size is None:
         return None
     lo, hi = product.ticket_size.min, product.ticket_size.max
@@ -109,7 +109,7 @@ def ticket_size(profile: SMEProfile, product: LenderProduct) -> CheckResult | No
     )
 
 
-def tenure(profile: SMEProfile, product: LenderProduct) -> CheckResult | None:
+def tenure(profile: MatchInput, product: LenderProduct) -> CheckResult | None:
     # No tenure preference from the SME means any tenure is acceptable.
     if product.tenure_months is None or profile.requested_tenure_months is None:
         return None
@@ -129,7 +129,7 @@ def tenure(profile: SMEProfile, product: LenderProduct) -> CheckResult | None:
     )
 
 
-def gst_registration(profile: SMEProfile, product: LenderProduct) -> CheckResult | None:
+def gst_registration(profile: MatchInput, product: LenderProduct) -> CheckResult | None:
     if not product.gst_required:
         return None
     if profile.gst_registered is None:
@@ -152,7 +152,7 @@ def gst_registration(profile: SMEProfile, product: LenderProduct) -> CheckResult
     )
 
 
-def constitution(profile: SMEProfile, product: LenderProduct) -> CheckResult | None:
+def constitution(profile: MatchInput, product: LenderProduct) -> CheckResult | None:
     allowed = product.allowed_constitutions
     if allowed is None:
         return None
@@ -177,7 +177,7 @@ def constitution(profile: SMEProfile, product: LenderProduct) -> CheckResult | N
     )
 
 
-def sector(profile: SMEProfile, product: LenderProduct) -> CheckResult | None:
+def sector(profile: MatchInput, product: LenderProduct) -> CheckResult | None:
     excluded = product.excluded_sectors
     if not excluded:
         return None

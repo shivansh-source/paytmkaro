@@ -370,7 +370,18 @@
         "null"
       ],
       "items": {
-        "type": "string"
+        "type": "string",
+        "enum": [
+          "proprietorship",
+          "partnership",
+          "llp",
+          "pvt_ltd",
+          "public_ltd",
+          "huf",
+          "trust",
+          "society",
+          "other"
+        ]
       },
       "uniqueItems": true
     },
@@ -827,7 +838,18 @@
       "additionalProperties": false,
       "properties": {
         "constitution": {
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "proprietorship",
+            "partnership",
+            "llp",
+            "pvt_ltd",
+            "public_ltd",
+            "huf",
+            "trust",
+            "society",
+            "other"
+          ]
         },
         "min_business_vintage_months": {
           "type": [

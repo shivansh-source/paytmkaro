@@ -9,11 +9,11 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
 
-from app.recommendation.models import LenderProduct, MatchResult, SMEProfile
+from app.recommendation.models import LenderProduct, MatchInput, MatchResult
 from app.recommendation.rules import RULES, Rule
 
 
-def evaluate(profile: SMEProfile, product: LenderProduct, rules: Sequence[Rule] = RULES) -> MatchResult:
+def evaluate(profile: MatchInput, product: LenderProduct, rules: Sequence[Rule] = RULES) -> MatchResult:
     """Run every rule for one product. Any failed or missing check makes it "not yet"."""
     checks = [check for rule in rules if (check := rule(profile, product)) is not None]
     blockers = [check for check in checks if check.outcome != "pass"]
@@ -49,6 +49,6 @@ def _rank_key(result: MatchResult) -> tuple:
     return (1, len(result.reasons), result.apr_range[0])
 
 
-def recommend(profile: SMEProfile, products: Iterable[LenderProduct]) -> list[MatchResult]:
+def recommend(profile: MatchInput, products: Iterable[LenderProduct]) -> list[MatchResult]:
     """Evaluate every product and return them ranked, matched first."""
     return sorted((evaluate(profile, product) for product in products), key=_rank_key)

@@ -1,0 +1,47 @@
+{
+  "additionalProperties": false,
+  "description": "What the SME is asking for. Kept apart from the profile: one profile, many requests.",
+  "properties": {
+    "sme_id": {
+      "title": "Sme Id",
+      "type": "string"
+    },
+    "amount": {
+      "exclusiveMinimum": 0,
+      "title": "Amount",
+      "type": "integer"
+    },
+    "tenure_months": {
+      "anyOf": [
+        {
+          "exclusiveMinimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Tenure Months"
+    },
+    "purpose": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Purpose"
+    }
+  },
+  "required": [
+    "sme_id",
+    "amount"
+  ],
+  "title": "LoanRequest",
+  "type": "object",
+  "$id": "creditsetu/msme/v1/loan_request"
+}
