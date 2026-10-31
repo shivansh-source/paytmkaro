@@ -13,7 +13,7 @@ from jsonschema import Draft202012Validator
 from app.config import LENDERS_FILE
 from app.schemas.lender import LenderProduct
 
-LENDER_DIR = Path(__file__).resolve().parents[2] / "schemas" / "v1" / "lender"
+LENDER_DIR = Path(__file__).resolve().parents[3] / "schemas" / "v1" / "lender"
 JSON_SCHEMA = json.loads((LENDER_DIR / "lender_product.schema.json").read_text(encoding="utf-8"))
 EXAMPLE = json.loads((LENDER_DIR / "examples" / "lender_product.json").read_text(encoding="utf-8"))
 RECORDS = json.loads(LENDERS_FILE.read_text(encoding="utf-8"))["products"]
