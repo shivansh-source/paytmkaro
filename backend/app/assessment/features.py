@@ -103,13 +103,19 @@ def _with_bank_headers(ctx: Context, evidence: list[EvidenceRef]) -> tuple[Evide
 
 
 def _daily_balances(env: DocumentEnvelope) -> list[float]:
-    """End-of-day balance for each day of the statement, carried forward over quiet days."""
+    """End-of-day balance for each day of the statement, carried forward over quiet days.
+
+    Uses printed balances only; empty when fewer than half the rows print one (a rebuild would be a guess)."""
     bank = env.data
     txns = sorted(bank.transactions, key=lambda t: t.date)
+    printed = [t for t in txns if t.balance is not None]
+    if not printed or len(printed) * 2 < len(txns):
+        return []
     start = bank.period_from.value or txns[0].date
     end = bank.period_to.value or txns[-1].date
-    eod = {t.date: t.balance for t in txns}
-    balance = bank.opening_balance.value if bank.opening_balance.value is not None else txns[0].balance
+    eod = {t.date: t.balance for t in printed}
+    opening = bank.opening_balance.value if bank.opening_balance is not None else None
+    balance = opening if opening is not None else printed[0].balance
     out, day = [], start
     while day <= end:
         balance = eod.get(day, balance)
@@ -287,6 +293,9 @@ def low_balance_days(ctx: Context) -> Feature | Unavailable:
     emi = cash.existing_emi_monthly.value if cash.existing_emi_monthly else 0.0
     floor = emi if emi > 0 else 0.1 * cash.avg_monthly_credits.value
     days = _daily_balances(env)
+    if not days:
+        return Unavailable("Most rows of the statement don't print a running balance, so daily balances can't be rebuilt.",
+                           "document bank_statement: a running balance on most rows")
     share = round(sum(1 for b in days if b < floor) / len(days), 3)
     what = "one month of existing EMI" if emi > 0 else "10% of a month's credits"
     return Feature(share, f"Balance was below {what} on {share:.0%} of days", _bank_refs(env))

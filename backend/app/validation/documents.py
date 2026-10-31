@@ -41,6 +41,7 @@ FIELD_LABELS = {
     "name": "name",
     "father_name": "father's name",
     "dob": "date of birth",
+    "year_of_birth": "year of birth",
     "aadhaar_last4": "Aadhaar last 4 digits",
     "address": "address",
     "gender": "gender",
@@ -173,15 +174,31 @@ def check_gstr3b(d: Gstr3b, as_of: date) -> list[Check]:
     return checks
 
 
+def _balance_walk(d: BankStatement) -> tuple[list[int], int, float | None]:
+    """Row-by-row balance arithmetic: (rows that don't add up, rows actually checked, running balance at the end).
+
+    A row with no printed balance can't be checked itself, but the running total is carried through it
+    (previous + credit - debit), so the next printed balance still catches an edited amount. The first row is
+    only checked when the statement prints an opening balance."""
+    breaks: list[int] = []
+    checked = 0
+    running = _value(d.opening_balance)
+    for i, txn in enumerate(d.transactions):
+        expected = None if running is None else running + txn.credit - txn.debit
+        if txn.balance is None:
+            running = expected
+            continue
+        if expected is not None:
+            checked += 1
+            if abs(expected - txn.balance) > TOLERANCE:
+                breaks.append(i)
+        running = txn.balance
+    return breaks, checked, running
+
+
 def balance_breaks(d: BankStatement) -> list[int]:
     """Indexes of rows where previous balance + credit - debit != balance."""
-    breaks: list[int] = []
-    previous = _value(d.opening_balance)
-    for i, txn in enumerate(d.transactions):
-        if previous is not None and abs(previous + txn.credit - txn.debit - txn.balance) > TOLERANCE:
-            breaks.append(i)
-        previous = txn.balance
-    return breaks
+    return _balance_walk(d)[0]
 
 
 def check_bank_statement(d: BankStatement, as_of: date) -> list[Check]:
@@ -189,20 +206,28 @@ def check_bank_statement(d: BankStatement, as_of: date) -> list[Check]:
     checks = [_check("bank.ifsc_format", IFSC_RE.match(ifsc) is not None if ifsc else None, "IFSC format is valid",
                      f"'{ifsc}' is not a valid IFSC", ["data.ifsc"])]
 
-    breaks = balance_breaks(d)
+    breaks, checked, last = _balance_walk(d)
+    rows = len(d.transactions)
     detail = ", ".join(f"{d.transactions[i].date:%d %b %Y}" for i in breaks[:3])
-    checks.append(
-        _check("bank.balance_math", not breaks, "Every row adds up: previous balance + credit - debit = balance",
-               f"Balance doesn't add up on {len(breaks)} row(s) ({detail}): possible edit or misread",
-               [f"data.transactions.{i}" for i in breaks] or ["data.transactions"])
-    )
+    if not breaks and rows and checked * 2 < rows:
+        # Never a pass on a handful of rows: stripping the balance column must not hide an edit.
+        checks.append(Check(
+            id="bank.balance_math", status=CheckStatus.WARN, fields=["data.transactions"],
+            message=f"Only {checked} of {rows} rows could be checked against a running balance, so edits can't be ruled out",
+        ))
+    else:
+        checks.append(
+            _check("bank.balance_math", not breaks, "Every row adds up: previous balance + credit - debit = balance",
+                   f"Balance doesn't add up on {len(breaks)} row(s) ({detail}): possible edit or misread",
+                   [f"data.transactions.{i}" for i in breaks] or ["data.transactions"])
+        )
 
-    last = d.transactions[-1].balance if d.transactions else _value(d.opening_balance)
     closing = _value(d.closing_balance)
     if closing is not None and last is not None:
+        estimated = " (worked out from the rows)" if d.transactions and d.transactions[-1].balance is None else ""
         checks.append(
             _check("bank.closing_balance", abs(closing - last) <= TOLERANCE, "Closing balance matches the last row",
-                   f"Closing balance {closing:,.2f} doesn't match the last row ({last:,.2f})", ["data.closing_balance"])
+                   f"Closing balance {closing:,.2f} doesn't match the last row ({last:,.2f}{estimated})", ["data.closing_balance"])
         )
 
     dates = [t.date for t in d.transactions]

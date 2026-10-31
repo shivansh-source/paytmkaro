@@ -36,9 +36,10 @@ export interface Extracted<T = unknown> {
 export interface Transaction {
   date: string;
   narration: string;
+  ref?: string | null;
   debit: number;
   credit: number;
-  balance: number;
+  balance: number | null; // null when the statement prints no running balance on that row
   tags: string[];
 }
 
@@ -49,7 +50,7 @@ export interface Envelope {
   status: DocumentStatus;
   uploaded_at: string;
   file: { file_name: string; mime_type: string; size_bytes: number; pages?: number | null; sha256: string };
-  triage?: { input_kind: "digital_pdf" | "scanned_pdf" | "photo"; extractor: string; fell_back_to_vlm: boolean } | null;
+  triage?: { input_kind: "digital_pdf" | "scanned_pdf" | "photo" | "spreadsheet" | "word" | "text"; extractor: string; fell_back_to_vlm: boolean } | null;
   data: ({ document_type: DocumentType } & Record<string, unknown>) | null;
   checks: Check[];
   error?: string | null;

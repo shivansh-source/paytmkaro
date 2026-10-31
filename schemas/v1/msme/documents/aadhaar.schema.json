@@ -372,6 +372,71 @@
       "title": "Extracted[date]",
       "type": "object"
     },
+    "Extracted_int_": {
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        },
+        "bbox": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BBox"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "raw_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Text"
+        },
+        "user_confirmed": {
+          "default": false,
+          "title": "User Confirmed",
+          "type": "boolean"
+        },
+        "needs_review": {
+          "readOnly": true,
+          "title": "Needs Review",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "value",
+        "confidence",
+        "source",
+        "needs_review"
+      ],
+      "title": "Extracted[int]",
+      "type": "object"
+    },
     "Extracted_str_": {
       "properties": {
         "value": {
@@ -478,7 +543,26 @@
       "$ref": "#/$defs/Extracted_str_"
     },
     "dob": {
-      "$ref": "#/$defs/Extracted_date_"
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Extracted_date_"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "year_of_birth": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Extracted_int_"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     },
     "gender": {
       "anyOf": [
@@ -498,7 +582,6 @@
   "required": [
     "aadhaar_last4",
     "name",
-    "dob",
     "address"
   ],
   "title": "Aadhaar",

@@ -56,7 +56,7 @@ def _money_after(lines: list[Line], label: re.Pattern[str], *, skip: re.Pattern[
 
 # ---------- Bureau report ----------
 
-_BUREAU = re.compile(r"cibil|transunion|experian|equifax|crif(?:\s*high\s*mark)?", I)
+_BUREAU = re.compile(r"cibil|transunion|experian|equifax|crif(?:\s*high\s*mark)?|credit\s*(?:information\s*)?bureau", I)
 _SCORE_NOISE = re.compile(r"range|factor|reason|model|version|between|scale|how |understand", I)
 _SCORE = re.compile(r"score(?:\s*\([^)]*\))?[\s:=-]*(?:is\s*)?(NH|N/A|NA|-1|\d{3})(?![\w/.\d-])", I)
 _NO_HISTORY = {"NH", "N/A", "NA", "-1", "000"}
@@ -98,10 +98,11 @@ def read_bureau_report(view: PageView) -> PageRead:
             if t := re.search(r"(?:cibil|transunion|experian|equifax|crif)[A-Za-z ]{0,25}?score(?:\s*(?:v|version)?\s*\d(?:\.\d)?)?", line.text, I):
                 read.put("score_type", Hit(t.group(0), line.confidence))
             break
-    read.put(
-        "cmr_rank",
-        after_label(lines, re.compile(r"\bCMR\b(?:[\s-]*(?:rank|score))?"), re.compile(r"(?<![\d/.])(?:10|[1-9])(?![\d/.])"), ahead=0, skip=re.compile(r"1\s*(?:-|to)\s*10", I)),
-    )
+    for line in lines:
+        if m := re.search(r"\bCMR\b(?:[\s-]*(?:rank|score))?", line.text):
+            if v := re.search(r"(?<![\d/.])(10|[1-9])(?![\d/.])", _strip_parens(line.text[m.end():])):
+                read.put("cmr_rank", Hit(v.group(1), line.confidence))
+                break
     read.put("active_accounts", _last_int(lines, re.compile(r"(?:active|open|live)\s*(?:credit\s*)?accounts?", I)))
     amounts = [
         ("total_outstanding", r"total\s*(?:current\s*)?(?:outstanding|balance)"),
@@ -156,7 +157,7 @@ def _bureau_accounts(view: PageView) -> list[dict[str, Any]]:
 
 # ---------- Udyam ----------
 
-_UDYAM = re.compile(r"UDYAM[\s-]*([A-Z0-9]{2})[\s-]*([A-Z0-9]{2})[\s-]*([A-Z0-9]{7})")
+_UDYAM = re.compile(r"UDYAM\s*[-–]\s*([A-Z0-9]{2})\s*[-–]\s*([A-Z0-9]{2})\s*[-–]\s*([A-Z0-9]{7})")
 _NIC_LINE = re.compile(r"^\W*(\d{2,5})\s*[-–:|]\s*([A-Za-z].{2,100})$")
 
 
@@ -200,7 +201,13 @@ def read_udyam_certificate(view: PageView) -> PageRead:
         if re.search(r"\bNIC\b", line.text):
             seen_nic = True
             continue
-        if seen_nic and (m := _NIC_LINE.match(line.text)):
+        if seen_nic and re.match(r"^\W*\d{2,5}\s", line.text):
+            # One line can hold several codes: "46 Wholesale trade 4690 Non-specialised 46900 ..."
+            for chunk in re.split(r"(?=(?<!\d)\d{2,5}\s+[A-Za-z])", line.text):
+                if m := re.match(r"\s*(\d{2,5})\s+(.+?)\s*$", chunk):
+                    nic.append({"code": m.group(1), "description": clean_value(m.group(2))})
+            conf = min(conf, line.confidence)
+        elif seen_nic and (m := _NIC_LINE.match(line.text)):
             nic.append({"code": m.group(1), "description": clean_value(m.group(2))})
             conf = min(conf, line.confidence)
     for table in view.tables:
@@ -378,7 +385,7 @@ def read_sanction_letter(view: PageView) -> PageRead:
             if re.search(r"\b(?:bank|finance|nbfc|capital|financial)\b", text, I) and len(text) <= 60 and not re.search(r"dear|sanction|letter|to,|subject", text, I):
                 read.put("lender_name", Hit(text, line.confidence * 0.9, "letterhead"))
                 break
-    read.put("facility_type", after_label(lines, re.compile(r"type\s*of\s*(?:the\s*)?facility|facility\s*type|nature\s*of\s*(?:the\s*)?facility|\bfacility\b|\bproduct\b", I), ahead=0, skip=re.compile(r"amount|limit", I)))
+    read.put("facility_type", after_label(lines, re.compile(r"type\s*of\s*(?:the\s*)?facility|facility\s*type|nature\s*of\s*(?:the\s*)?facility|\bfacility\s*:|\bproduct\s*:", I), ahead=0, skip=re.compile(r"amount|limit", I)))
     read.put(
         "sanctioned_amount",
         _money_after(lines, re.compile(r"sanction(?:ed)?\s*(?:amount|limit)|facility\s*amount|loan\s*amount|limit\s*sanctioned|amount\s*sanctioned", I), skip=re.compile(r"\bdate\b", I)),
@@ -396,7 +403,7 @@ def read_sanction_letter(view: PageView) -> PageRead:
                 break
     read.put("apr_pct", after_label(lines, re.compile(r"\bAPR\b|annuali[sz]ed\s*percentage\s*rate|annual\s*percentage\s*rate", I), re.compile(r"\d{1,2}(?:\.\d+)?\s*%"), ahead=0))
     for line in lines:
-        if m := re.search(r"tenure|tenor|repayment\s*period", line.text, I):
+        if m := re.search(r"tenure|tenor|repayment\s*period|loan\s*term|term\s*of\s*(?:the\s*)?loan", line.text, I):
             t = re.search(r"(\d+)\s*(months?|mths?|years?|yrs?)", line.text[m.end():], I)
             if t:
                 months = int(t.group(1)) * (12 if t.group(2).lower().startswith(("y")) else 1)
@@ -412,7 +419,7 @@ def read_sanction_letter(view: PageView) -> PageRead:
             if amount:
                 read.put("processing_fee", amount)
             break
-    security = after_label(lines, re.compile(r"(?:security|collateral)(?:\s*offered|\s*details)?", I), ahead=1, stop=_NUMBERED, skip=re.compile(r"interest|rate", I))
+    security = after_label(lines, re.compile(r"^\W*(?:security|collateral)(?:\s*offered|\s*details)?\s*:", I), ahead=1, stop=_NUMBERED, skip=re.compile(r"interest|rate", I))
     if security:
         masked = Hit(_mask_long_numbers(security.value), security.confidence)
         read.put("security", masked)
@@ -435,7 +442,7 @@ def read_sanction_letter(view: PageView) -> PageRead:
 
 # ---------- Settlement report ----------
 
-_PII_COLUMN = re.compile(r"vpa|upi\s*id|payer|customer|cardholder|card|mobile|phone|msisdn|e-?mail|\bname\b|account\s*(?:no|number)|a/c|\bpan\b|aadhaar|utr|rrn|\bref", I)
+_PII_COLUMN = re.compile(r"(?:^|[\s_])id$|\bid\b|_id\b|vpa|upi\s*id|payer|customer|cardholder|card|mobile|phone|msisdn|e-?mail|\bname\b|account\s*(?:no|number)|a/c|\bpan\b|aadhaar|utr|rrn|\bref", I)
 _SETTLEMENT_COLUMNS = [
     ("date", re.compile(r"date|settled\s*on", I)),
     ("gross", re.compile(r"gross|total\s*(?:amount|sales|collections?)|sales?|collections?|transaction\s*amount|txn\s*amount|^amount", I)),

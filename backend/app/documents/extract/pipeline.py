@@ -6,6 +6,7 @@ same pydantic checks; aggregates (totals, counts, period ranges) are computed he
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 from statistics import mean
@@ -94,7 +95,7 @@ class _Extraction:
             return
         value = self._check(name, hit.value, "the document text")
         if value is not None:
-            self.fields[name] = Candidate(value, view.source, view.index, round(hit.confidence, 3), hit.note, name not in FREE_TEXT, _raw(hit.value))
+            self.fields[name] = Candidate(value, view.source, view.index, round(hit.confidence, 3), hit.note, name not in FREE_TEXT, _as_read(hit))
 
     def offer_vlm(self, name: str, raw: Any, page_index: int | None) -> None:
         value = self._check(name, raw, "the VLM")
@@ -137,6 +138,13 @@ class _Extraction:
 
 def _raw(value: Any) -> str | None:
     return None if value is None or isinstance(value, (list, dict)) else str(value)[:200]
+
+
+def _as_read(hit: Hit) -> str | None:
+    """The text as printed: for a value repaired by position the reader's note says what was read."""
+    if hit.note and (m := re.search(r"corrected from (.+?)(?:;|$)", hit.note)):
+        return m.group(1)[:200]
+    return _raw(hit.value)
 
 
 def _same(name: str, a: Any, b: Any) -> bool:

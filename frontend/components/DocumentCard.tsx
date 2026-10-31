@@ -11,13 +11,22 @@ function brokenRows(doc: Envelope) {
   const check = doc.checks.find((c) => c.id === "bank.balance_math" && c.status !== "pass");
   if (!check || !doc.data) return [];
   const txns = doc.data.transactions as Transaction[];
-  const opening = (doc.data.opening_balance as Extracted<number>).value ?? 0;
+  const opening = (doc.data.opening_balance as Extracted<number> | null | undefined)?.value ?? null;
+  // Same rule as the backend: a row with no printed balance carries the running total forward.
+  const runningBefore = (i: number) => {
+    let running: number | null = opening;
+    for (let j = 0; j < i; j++) {
+      const t = txns[j];
+      running = t.balance ?? (running === null ? null : running + t.credit - t.debit);
+    }
+    return running;
+  };
   return check.fields
     .map((f) => Number(f.split(".").pop()))
     .filter((i) => Number.isInteger(i))
-    .map((i) => {
-      const previous = i === 0 ? opening : txns[i - 1].balance;
-      return { row: txns[i], expected: previous + txns[i].credit - txns[i].debit };
+    .flatMap((i) => {
+      const previous = runningBefore(i);
+      return previous === null ? [] : [{ row: txns[i], expected: previous + txns[i].credit - txns[i].debit }];
     });
 }
 
@@ -59,7 +68,7 @@ export function DocumentCard({ doc, onConfirm, busy = false }: { doc: Envelope; 
           {broken.map(({ row, expected }) => (
             <p key={row.date + row.narration}>
               {formatDate(row.date)} · {row.narration}: credit {inr(row.credit)}. The balance should be {inr(expected)}, the
-              statement shows {inr(row.balance)}.
+              statement shows {row.balance === null ? "no balance" : inr(row.balance)}.
             </p>
           ))}
         </div>

@@ -44,9 +44,18 @@ class Aadhaar(Schema):
     aadhaar_last4: Extracted[Last4]
     verhoeff_valid: bool | None = None  # computed on the full number before it was discarded
     name: Extracted[str]
-    dob: Extracted[date]
+    # Older cards print only a year of birth. At least one of the two must be present; a field that
+    # was looked for but unreadable is an Extracted with value None, so validation can report it.
+    dob: Extracted[date] | None = None
+    year_of_birth: Extracted[int] | None = None
     gender: Extracted[Literal["male", "female", "other"]] | None = None
     address: Extracted[Address]
+
+    @model_validator(mode="after")
+    def _has_a_birth_date(self) -> Aadhaar:
+        if self.dob is None and self.year_of_birth is None:
+            raise ValueError("Aadhaar needs a dob or a year_of_birth (use an Extracted with value None if unreadable)")
+        return self
 
 
 class GstRegistration(Schema):
@@ -83,9 +92,12 @@ TransactionTag = Literal["bounce", "emi", "nach", "charges", "cash", "upi", "gst
 class Transaction(Schema):
     date: date
     narration: str
+    ref: str | None = None  # cheque / reference number column, kept apart from the narration
     debit: float = Field(default=0, ge=0)
     credit: float = Field(default=0, ge=0)
-    balance: float  # can be negative on overdraft accounts
+    # Running balance after this row; can be negative on overdraft accounts. None when the statement does not
+    # print one: the row is kept (its credit or debit still counts) but cannot be checked on its own.
+    balance: float | None = None
     tags: list[TransactionTag] = []  # "bounce" from RTN / INSUFFICIENT FUNDS / NACH RETURN, etc.
     provenance: RowProvenance | None = None
 
@@ -98,7 +110,7 @@ class BankStatement(Schema):
     bank_name: Extracted[str] | None = None
     period_from: Extracted[date]
     period_to: Extracted[date]
-    opening_balance: Extracted[float]
+    opening_balance: Extracted[float] | None = None  # many statements never print it; the first row is then not checked
     closing_balance: Extracted[float]
     transactions: list[Transaction]
 
@@ -143,7 +155,7 @@ class FileInfo(Schema):
 class Triage(Schema):
     """Which extractor the triage step chose, and whether it had to fall back."""
 
-    input_kind: Literal["digital_pdf", "scanned_pdf", "photo"]
+    input_kind: Literal["digital_pdf", "scanned_pdf", "photo", "spreadsheet", "word", "text"]
     extractor: Literal[Source.PARSER, Source.OCR, Source.VLM]
     fell_back_to_vlm: bool = False
     fallback_reason: str | None = None  # "low OCR confidence", "OCR and VLM disagree on PAN"
@@ -155,7 +167,7 @@ DocumentStatus = Literal["queued", "extracting", "needs_review", "verified", "fa
 
 
 class DocumentEnvelope(Schema):
-    schema_version: Literal["1.0"] = SCHEMA_VERSION
+    schema_version: Literal["1.0", "1.1"] = SCHEMA_VERSION
     document_id: str
     sme_id: str
     document_type: DocumentType

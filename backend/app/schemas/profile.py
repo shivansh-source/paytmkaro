@@ -92,7 +92,7 @@ class DocumentSummary(Schema):
 
 
 class SmeProfile(Schema):
-    schema_version: Literal["1.0"] = SCHEMA_VERSION
+    schema_version: Literal["1.0", "1.1"] = SCHEMA_VERSION
     sme_id: str
     updated_at: datetime
     identity: Identity

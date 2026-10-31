@@ -129,7 +129,18 @@ def dob_match(docs: DocumentSet) -> Check | None:
     if not pan_doc or not aadhaar_doc:
         return None
     a, b = _v(pan_doc.data.dob), _v(aadhaar_doc.data.dob)
-    if a is None or b is None:
+    year = _v(aadhaar_doc.data.year_of_birth)
+    fields = ["data.dob"]
+    expected, actual = (str(a) if a else None), (str(b) if b else None)
+    if a is not None and b is None and year is not None:
+        # Older Aadhaar cards print only a year. A matching year is still a match; a different year is not.
+        fields = ["data.dob", "data.year_of_birth"]
+        expected, actual = str(a.year), str(year)
+        if a.year == year:
+            status, message = CheckStatus.PASS, "Year of birth matches on PAN and Aadhaar (Aadhaar shows only the year)"
+        else:
+            status, message = CheckStatus.FAIL, f"Year of birth differs: PAN {a.year}, Aadhaar {year}"
+    elif a is None or b is None:
         status, message = CheckStatus.WARN, "Couldn't read the date of birth on PAN or Aadhaar"
     elif a == b:
         status, message = CheckStatus.PASS, "Date of birth matches on PAN and Aadhaar"
@@ -140,9 +151,9 @@ def dob_match(docs: DocumentSet) -> Check | None:
         status=status,
         message=message,
         document_ids=[pan_doc.document_id, aadhaar_doc.document_id],
-        fields=["data.dob"],
-        expected=str(a) if a else None,
-        actual=str(b) if b else None,
+        fields=fields,
+        expected=expected,
+        actual=actual,
     )
 
 

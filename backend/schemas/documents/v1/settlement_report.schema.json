@@ -42,12 +42,12 @@
       "type": "number"
     },
     "transaction_count": {
-      "maximum": 100000,
+      "maximum": 10000000,
       "minimum": 0,
       "type": "integer"
     },
     "months_covered": {
-      "maximum": 100000,
+      "maximum": 10000000,
       "minimum": 0,
       "type": "integer"
     },
@@ -84,7 +84,7 @@
             "type": "number"
           },
           "txn_count": {
-            "maximum": 100000,
+            "maximum": 10000000,
             "minimum": 0,
             "type": "integer"
           },
