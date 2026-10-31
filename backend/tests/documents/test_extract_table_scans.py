@@ -96,6 +96,24 @@ def test_crop_is_widened_by_a_third_of_the_box_height_on_both_sides():
     assert _crop(image, poly).shape[:2] == (30, int(200 + 2 * pad))
 
 
+def test_margin_never_reaches_into_a_neighbouring_box_on_the_same_line():
+    from app.documents.ocr import _room, _widen
+
+    def quad(x0, y0, x1, y1):
+        return np.array([[x0, y0], [x1, y0], [x1, y1], [x0, y1]], dtype=np.float32)
+
+    box = quad(100, 50, 300, 80)  # height 30: the full margin would be 9 px
+    near = quad(306, 50, 400, 80)  # 6 px to the right on the same line
+    overlapping = quad(290, 52, 380, 82)  # already overlaps it (an Aadhaar group boundary)
+    other_line = quad(302, 120, 400, 150)
+
+    assert _room(box, [box, near]) == (float("inf"), 6.0)
+    assert _room(box, [box, other_line]) == (float("inf"), float("inf"))
+    widened = _widen(box, room=_room(box, [box, near]))
+    assert widened[1][0] == pytest.approx(303) and widened[0][0] == pytest.approx(91)  # half the 6 px gap; free side full
+    assert _widen(box, room=_room(box, [box, overlapping]))[1][0] == 300  # no margin into an overlapping neighbour
+
+
 def test_vertical_strips_are_not_widened():
     from app.documents.ocr import _widen
 

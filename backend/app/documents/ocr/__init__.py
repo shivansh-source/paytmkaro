@@ -45,8 +45,26 @@ DET_OPTIONS = {"limit_side_len": 1280, "limit_type": "max", "thresh": 0.3, "box_
 EDGE_PAD = 0.3  # crop margin on each short side, as a fraction of the box height
 
 
-def _widen(pts: np.ndarray, pad: float = EDGE_PAD) -> np.ndarray:
-    """Move the left and right edges of a quad outward along the text direction by pad x box height.
+def _room(poly: np.ndarray, others: list[np.ndarray]) -> tuple[float, float]:
+    """Free pixels to the left and right of a box before the nearest other box on the same line (inf if none;
+    0 when they already overlap). A margin must never reach into a neighbour's text: a crop that pulled in the
+    last digit of the group next to it turned an Aadhaar number into one the masker no longer recognised."""
+    x0, y0, x1, y1 = poly[:, 0].min(), poly[:, 1].min(), poly[:, 0].max(), poly[:, 1].max()
+    left = right = float("inf")
+    for other in others:
+        ox0, oy0, ox1, oy1 = other[:, 0].min(), other[:, 1].min(), other[:, 0].max(), other[:, 1].max()
+        if other is poly or min(y1, oy1) - max(y0, oy0) < 0.3 * min(y1 - y0, oy1 - oy0):
+            continue  # the same box, or not on this line
+        if ox0 + ox1 > x0 + x1:
+            right = min(right, max(ox0 - x1, 0.0))
+        else:
+            left = min(left, max(x0 - ox1, 0.0))
+    return left, right
+
+
+def _widen(pts: np.ndarray, pad: float = EDGE_PAD, room: tuple[float, float] = (float("inf"), float("inf"))) -> np.ndarray:
+    """Move the left and right edges of a quad outward along the text direction by pad x box height, at most
+    half the free room on that side (the neighbour may widen towards us by the same amount).
     The recogniser drops a character that touches a tight crop edge (a GSTIN came out as 14 characters).
     Only the pixels fed to the recogniser change; the returned OcrLine boxes still come from the
     detector's polygon, so highlight and redaction boxes are unaffected."""
@@ -55,15 +73,17 @@ def _widen(pts: np.ndarray, pad: float = EDGE_PAD) -> np.ndarray:
     height = float(max(np.linalg.norm(pts[0] - pts[3]), np.linalg.norm(pts[1] - pts[2])))
     if length < 1 or length < height:  # a vertical strip is rotated after cropping; leave it alone
         return pts
-    shift = along / length * pad * height
-    return np.float32([pts[0] - shift, pts[1] + shift, pts[2] + shift, pts[3] - shift])
+    unit = along / length
+    left, right = (min(pad * height, room[0] / 2), min(pad * height, room[1] / 2))
+    return np.float32([pts[0] - unit * left, pts[1] + unit * right, pts[2] + unit * right, pts[3] - unit * left])
 
 
-def _crop(image: np.ndarray, poly: np.ndarray) -> np.ndarray:
-    """Perspective-crop one detected text quad to an upright strip, with a small margin at both ends."""
+def _crop(image: np.ndarray, poly: np.ndarray, others: list[np.ndarray] | None = None) -> np.ndarray:
+    """Perspective-crop one detected text quad to an upright strip, with a small margin at both ends
+    (never into a neighbouring box on the same line)."""
     import cv2
 
-    pts = _widen(poly.astype(np.float32))
+    pts = _widen(poly.astype(np.float32), room=_room(poly, others or []))
     width = int(max(np.linalg.norm(pts[0] - pts[1]), np.linalg.norm(pts[2] - pts[3])))
     height = int(max(np.linalg.norm(pts[0] - pts[3]), np.linalg.norm(pts[1] - pts[2])))
     width, height = max(width, 1), max(height, 1)
@@ -129,7 +149,7 @@ class PaddleOcrEngine:
                 return []
             order = _reading_order(polys)
             polys = [polys[i] for i in order]
-            crops = [_crop(bgr, poly) for poly in polys]
+            crops = [_crop(bgr, poly, polys) for poly in polys]
             if ori is not None:
                 for i, result in enumerate(ori.predict(crops)):
                     if result["label_names"][0] == "180_degree":
