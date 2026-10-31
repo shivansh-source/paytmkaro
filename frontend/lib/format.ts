@@ -32,7 +32,11 @@ export const DOCUMENTS: { type: DocumentType; name: string; why: string; how: st
   { type: "gstr3b", name: "GSTR-3B returns", why: "Declared turnover, last 6 months", how: "PDF" },
   { type: "bank_statement", name: "Bank statement", why: "Real cash flow: balances, bounces, EMIs", how: "PDF, last 6-12 months" },
   { type: "udyam", name: "Udyam certificate", why: "Confirms MSME status and category", how: "PDF or photo" },
-  { type: "itr_v", name: "ITR-V", why: "Declared income, for lenders that ask for it", how: "PDF", optional: true }
+  { type: "itr_v", name: "ITR-V", why: "Declared income, for lenders that ask for it", how: "PDF", optional: true },
+  { type: "bureau_report", name: "Credit bureau report", why: "Uploaded score and credit history; lender verifies independently", how: "PDF", optional: true },
+  { type: "financial_statements", name: "Financial statements", why: "Revenue, profit and balance sheet", how: "PDF, XLSX or DOCX", optional: true },
+  { type: "sanction_letter", name: "Loan sanction letter", why: "Existing facilities and repayment terms", how: "PDF or DOCX", optional: true },
+  { type: "settlement_report", name: "Payment settlement report", why: "Payment aggregator collections and fees", how: "CSV, XLSX or PDF", optional: true }
 ];
 
 export const documentName = (type: DocumentType) => DOCUMENTS.find((d) => d.type === type)?.name ?? type;

@@ -136,10 +136,88 @@ class ItrV(Schema):
     filing_date: Extracted[date] | None = None
 
 
+class BureauReport(Schema):
+    """Borrower-uploaded bureau data; the lender must verify it with its own consented pull."""
+
+    document_type: Literal["bureau_report"] = "bureau_report"
+    bureau_name: Extracted[str] | None = None
+    report_date: Extracted[date] | None = None
+    score: Extracted[int] | None = None  # consumer score, valid range checked in validation
+    cmr_rank: Extracted[int] | None = None  # commercial rank 1-10; lower is better
+    active_accounts: Extracted[int] | None = None
+    total_outstanding: Extracted[float] | None = None
+    overdue_amount: Extracted[float] | None = None
+    max_dpd_24m: Extracted[int] | None = None
+    written_off_or_settled: Extracted[bool] | None = None
+    suit_filed_or_wilful_default: Extracted[bool] | None = None
+    enquiries_90d: Extracted[int] | None = None
+
+
+class FinancialStatements(Schema):
+    """Annual financial figures in INR, with provenance retained for every extracted value."""
+
+    document_type: Literal["financial_statements"] = "financial_statements"
+    financial_year: Extracted[str] | None = None
+    prior_financial_year: Extracted[str] | None = None
+    audit_status: Extracted[Literal["audited", "ca_certified", "provisional", "unknown"]] | None = None
+    revenue: Extracted[float] | None = None
+    prior_revenue: Extracted[float] | None = None
+    profit_after_tax: Extracted[float] | None = None
+    net_margin: Extracted[float] | None = None
+    total_assets: Extracted[float] | None = None
+    total_liabilities: Extracted[float] | None = None
+    total_equity_and_liabilities: Extracted[float] | None = None
+    net_worth: Extracted[float] | None = None
+    long_term_borrowings: Extracted[float] | None = None
+    short_term_borrowings: Extracted[float] | None = None
+    debt_to_equity: Extracted[float] | None = None
+    ebitda: Extracted[float] | None = None
+    depreciation: Extracted[float] | None = None
+    interest_expense: Extracted[float] | None = None
+    principal_repayments: Extracted[float] | None = None
+    dscr: Extracted[float] | None = None
+
+
+class SanctionLetter(Schema):
+    document_type: Literal["sanction_letter"] = "sanction_letter"
+    facility_type: Extracted[str] | None = None
+    sanctioned_amount: Extracted[float] | None = None
+    sanction_date: Extracted[date] | None = None
+    interest_rate_pct: Extracted[float] | None = None
+    rate_type: Extracted[Literal["fixed", "floating"]] | None = None
+    tenure_months: Extracted[int] | None = None
+    emi_amount: Extracted[float] | None = None
+    fd_lien_or_margin: Extracted[bool] | None = None
+    security: Extracted[str] | None = None
+
+
+class SettlementMonth(Schema):
+    month: Month
+    gross: float = Field(ge=0)
+    fees: float = Field(ge=0)
+    net: float = Field(ge=0)
+    fee_pct: float = Field(ge=0)
+    txn_count: int | None = Field(default=None, ge=0)
+
+
+class SettlementReport(Schema):
+    document_type: Literal["settlement_report"] = "settlement_report"
+    provider: Extracted[str] | None = None
+    merchant_id_last4: Extracted[Last4] | None = None
+    period_from: Extracted[date] | None = None
+    period_to: Extracted[date] | None = None
+    months: list[SettlementMonth] = []
+    total_gross: Extracted[float] | None = None
+    total_fees: Extracted[float] | None = None
+    total_net: Extracted[float] | None = None
+
+
 DocumentData = Annotated[
-    Union[PanCard, Aadhaar, GstRegistration, Gstr3b, BankStatement, Udyam, ItrV],
+    Union[PanCard, Aadhaar, GstRegistration, Gstr3b, BankStatement, Udyam, ItrV,
+          BureauReport, FinancialStatements, SanctionLetter, SettlementReport],
     Field(discriminator="document_type"),
 ]
+
 
 # ---- Envelope ------------------------------------------------------------------------------------
 
@@ -167,7 +245,7 @@ DocumentStatus = Literal["queued", "extracting", "needs_review", "verified", "fa
 
 
 class DocumentEnvelope(Schema):
-    schema_version: Literal["1.0", "1.1"] = SCHEMA_VERSION
+    schema_version: Literal["1.0", "1.1", "1.2"] = SCHEMA_VERSION
     document_id: str
     sme_id: str
     document_type: DocumentType

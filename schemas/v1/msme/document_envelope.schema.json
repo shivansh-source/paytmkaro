@@ -248,6 +248,141 @@
       "title": "BankStatement",
       "type": "object"
     },
+    "BureauReport": {
+      "additionalProperties": false,
+      "description": "Borrower-uploaded bureau data; the lender must verify it with its own consented pull.",
+      "properties": {
+        "document_type": {
+          "const": "bureau_report",
+          "default": "bureau_report",
+          "title": "Document Type",
+          "type": "string"
+        },
+        "bureau_name": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_str_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "report_date": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_date_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "score": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_int_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "cmr_rank": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_int_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "active_accounts": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_int_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "total_outstanding": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "overdue_amount": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "max_dpd_24m": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_int_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "written_off_or_settled": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_bool_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "suit_filed_or_wilful_default": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_bool_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "enquiries_90d": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_int_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "BureauReport",
+      "type": "object"
+    },
     "Check": {
       "additionalProperties": false,
       "description": "One ✓ / ⚠ / ✗ result with a plain-language message for the SME.",
@@ -344,7 +479,11 @@
         "gstr3b",
         "bank_statement",
         "udyam",
-        "itr_v"
+        "itr_v",
+        "bureau_report",
+        "financial_statements",
+        "sanction_letter",
+        "settlement_report"
       ],
       "title": "DocumentType",
       "type": "string"
@@ -541,6 +680,146 @@
         "needs_review"
       ],
       "title": "Extracted[Constitution]",
+      "type": "object"
+    },
+    "Extracted_Literal__audited____ca_certified____provisional____unknown___": {
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "enum": [
+                "audited",
+                "ca_certified",
+                "provisional",
+                "unknown"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        },
+        "bbox": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BBox"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "raw_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Text"
+        },
+        "user_confirmed": {
+          "default": false,
+          "title": "User Confirmed",
+          "type": "boolean"
+        },
+        "needs_review": {
+          "readOnly": true,
+          "title": "Needs Review",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "value",
+        "confidence",
+        "source",
+        "needs_review"
+      ],
+      "title": "Extracted[Literal['audited', 'ca_certified', 'provisional', 'unknown']]",
+      "type": "object"
+    },
+    "Extracted_Literal__fixed____floating___": {
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "enum": [
+                "fixed",
+                "floating"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        },
+        "bbox": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BBox"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "raw_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Text"
+        },
+        "user_confirmed": {
+          "default": false,
+          "title": "User Confirmed",
+          "type": "boolean"
+        },
+        "needs_review": {
+          "readOnly": true,
+          "title": "Needs Review",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "value",
+        "confidence",
+        "source",
+        "needs_review"
+      ],
+      "title": "Extracted[Literal['fixed', 'floating']]",
       "type": "object"
     },
     "Extracted_Literal__male____female____other___": {
@@ -745,6 +1024,71 @@
         "needs_review"
       ],
       "title": "Extracted[MsmeCategory]",
+      "type": "object"
+    },
+    "Extracted_bool_": {
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        },
+        "bbox": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BBox"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "raw_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Text"
+        },
+        "user_confirmed": {
+          "default": false,
+          "title": "User Confirmed",
+          "type": "boolean"
+        },
+        "needs_review": {
+          "readOnly": true,
+          "title": "Needs Review",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "value",
+        "confidence",
+        "source",
+        "needs_review"
+      ],
+      "title": "Extracted[bool]",
       "type": "object"
     },
     "Extracted_date_": {
@@ -1051,6 +1395,229 @@
       "title": "FileInfo",
       "type": "object"
     },
+    "FinancialStatements": {
+      "additionalProperties": false,
+      "description": "Annual financial figures in INR, with provenance retained for every extracted value.",
+      "properties": {
+        "document_type": {
+          "const": "financial_statements",
+          "default": "financial_statements",
+          "title": "Document Type",
+          "type": "string"
+        },
+        "financial_year": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_str_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "prior_financial_year": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_str_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "audit_status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_Literal__audited____ca_certified____provisional____unknown___"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "revenue": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "prior_revenue": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "profit_after_tax": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "net_margin": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "total_assets": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "total_liabilities": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "total_equity_and_liabilities": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "net_worth": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "long_term_borrowings": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "short_term_borrowings": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "debt_to_equity": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "ebitda": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "depreciation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "interest_expense": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "principal_repayments": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "dscr": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "FinancialStatements",
+      "type": "object"
+    },
     "GstRegistration": {
       "additionalProperties": false,
       "description": "GST REG-06 certificate.",
@@ -1309,6 +1876,268 @@
       "title": "RowProvenance",
       "type": "object"
     },
+    "SanctionLetter": {
+      "additionalProperties": false,
+      "properties": {
+        "document_type": {
+          "const": "sanction_letter",
+          "default": "sanction_letter",
+          "title": "Document Type",
+          "type": "string"
+        },
+        "facility_type": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_str_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "sanctioned_amount": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "sanction_date": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_date_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "interest_rate_pct": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "rate_type": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_Literal__fixed____floating___"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "tenure_months": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_int_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "emi_amount": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "fd_lien_or_margin": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_bool_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "security": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_str_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "SanctionLetter",
+      "type": "object"
+    },
+    "SettlementMonth": {
+      "additionalProperties": false,
+      "properties": {
+        "month": {
+          "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$",
+          "title": "Month",
+          "type": "string"
+        },
+        "gross": {
+          "minimum": 0,
+          "title": "Gross",
+          "type": "number"
+        },
+        "fees": {
+          "minimum": 0,
+          "title": "Fees",
+          "type": "number"
+        },
+        "net": {
+          "minimum": 0,
+          "title": "Net",
+          "type": "number"
+        },
+        "fee_pct": {
+          "minimum": 0,
+          "title": "Fee Pct",
+          "type": "number"
+        },
+        "txn_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Txn Count"
+        }
+      },
+      "required": [
+        "month",
+        "gross",
+        "fees",
+        "net",
+        "fee_pct"
+      ],
+      "title": "SettlementMonth",
+      "type": "object"
+    },
+    "SettlementReport": {
+      "additionalProperties": false,
+      "properties": {
+        "document_type": {
+          "const": "settlement_report",
+          "default": "settlement_report",
+          "title": "Document Type",
+          "type": "string"
+        },
+        "provider": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_str_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "merchant_id_last4": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_Annotated_str__StringConstraints__"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "period_from": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_date_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "period_to": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_date_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "months": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/SettlementMonth"
+          },
+          "title": "Months",
+          "type": "array"
+        },
+        "total_gross": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "total_fees": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "total_net": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extracted_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "SettlementReport",
+      "type": "object"
+    },
     "Source": {
       "description": "Who produced a value.",
       "enum": [
@@ -1535,10 +2364,11 @@
   "additionalProperties": false,
   "properties": {
     "schema_version": {
-      "default": "1.1",
+      "default": "1.2",
       "enum": [
         "1.0",
-        "1.1"
+        "1.1",
+        "1.2"
       ],
       "title": "Schema Version",
       "type": "string"
@@ -1591,10 +2421,14 @@
             "mapping": {
               "aadhaar": "#/$defs/Aadhaar",
               "bank_statement": "#/$defs/BankStatement",
+              "bureau_report": "#/$defs/BureauReport",
+              "financial_statements": "#/$defs/FinancialStatements",
               "gst_registration": "#/$defs/GstRegistration",
               "gstr3b": "#/$defs/Gstr3b",
               "itr_v": "#/$defs/ItrV",
               "pan_card": "#/$defs/PanCard",
+              "sanction_letter": "#/$defs/SanctionLetter",
+              "settlement_report": "#/$defs/SettlementReport",
               "udyam": "#/$defs/Udyam"
             },
             "propertyName": "document_type"
@@ -1620,6 +2454,18 @@
             },
             {
               "$ref": "#/$defs/ItrV"
+            },
+            {
+              "$ref": "#/$defs/BureauReport"
+            },
+            {
+              "$ref": "#/$defs/FinancialStatements"
+            },
+            {
+              "$ref": "#/$defs/SanctionLetter"
+            },
+            {
+              "$ref": "#/$defs/SettlementReport"
             }
           ]
         },

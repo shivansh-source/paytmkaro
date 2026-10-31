@@ -58,6 +58,13 @@ class BureauScore(Schema):
     value: int = Field(ge=300, le=900)
     source: Literal["mock", "self_declared", "bureau"]
     as_of: date | None = None
+    cmr_rank: int | None = Field(default=None, ge=1, le=10)
+    max_dpd_24m: int | None = Field(default=None, ge=0, le=999)
+    enquiries_90d: int | None = Field(default=None, ge=0)
+    written_off_or_settled: bool | None = None
+    suit_filed_or_wilful_default: bool | None = None
+    active_accounts: int | None = Field(default=None, ge=0)
+    overdue_amount: float | None = Field(default=None, ge=0)
 
 
 class ReadinessComponent(Schema):
@@ -92,7 +99,7 @@ class DocumentSummary(Schema):
 
 
 class SmeProfile(Schema):
-    schema_version: Literal["1.0", "1.1"] = SCHEMA_VERSION
+    schema_version: Literal["1.0", "1.1", "1.2"] = SCHEMA_VERSION
     sme_id: str
     updated_at: datetime
     identity: Identity

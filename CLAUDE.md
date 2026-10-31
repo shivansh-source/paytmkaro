@@ -310,7 +310,7 @@ fractions 0-1; extracted values are NOT pattern-constrained (a misread must be s
 can flag it); all models forbid unknown fields. **Privacy is enforced by types**: Aadhaar and bank
 account numbers are `Last4` (exactly 4 digits), so a full number cannot be stored.
 
-**Schema 1.1** (readers still accept 1.0 payloads, so profiles saved in the browser keep working):
+**Schema 1.2** adds typed envelopes for bureau reports, financial statements, sanction letters, and settlement reports. Readers still accept 1.0 and 1.1 payloads, so profiles saved in the browser keep working. Bureau scores from uploaded reports remain self-declared; CMR is kept separate from the consumer score.
 `Transaction.balance` and `Aadhaar.dob` can be null (read code must cope), `opening_balance` is optional,
 and `Aadhaar.year_of_birth`, `Transaction.ref` and the `input_kind` values `spreadsheet` / `word` / `text`
 were added. A row with no printed balance is kept, never dropped; validation chains a running total through

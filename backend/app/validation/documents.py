@@ -20,6 +20,10 @@ from app.schemas.common import (
     Extracted,
 )
 from app.schemas.documents import (
+    BureauReport,
+    FinancialStatements,
+    SanctionLetter,
+    SettlementReport,
     Aadhaar,
     BankStatement,
     DocumentEnvelope,
@@ -278,6 +282,65 @@ def check_itr_v(d: ItrV, as_of: date) -> list[Check]:
     ]
 
 
+def _field_value(data, name):
+    item = getattr(data, name)
+    return item.value if item is not None else None
+
+
+def check_bureau_report(d: BureauReport, as_of: date) -> list[Check]:
+    score, cmr = _field_value(d, "score"), _field_value(d, "cmr_rank")
+    return [
+        _check("bureau.score_range", 300 <= score <= 900 if score is not None else None,
+               "Consumer bureau score is in the 300-900 range", "Consumer score must be from 300 to 900", ["data.score"]),
+        _check("bureau.cmr_range", 1 <= cmr <= 10 if cmr is not None else None,
+               "Commercial rank is in the 1-10 range", "CMR rank must be from 1 to 10", ["data.cmr_rank"]),
+        _check("bureau.score_separate_from_cmr", not (score is not None and cmr is not None and score == cmr),
+               "Consumer score and commercial rank are separate fields", "Check that a CMR rank was not copied into the consumer score", ["data.score", "data.cmr_rank"]),
+    ]
+
+
+def check_financial_statements(d: FinancialStatements, as_of: date) -> list[Check]:
+    assets, total = _field_value(d, "total_assets"), _field_value(d, "total_equity_and_liabilities")
+    revenue, profit, margin = (_field_value(d, k) for k in ("revenue", "profit_after_tax", "net_margin"))
+    checks = [
+        _check("financials.balance_sheet", abs(assets - total) <= TOLERANCE if assets is not None and total is not None else None,
+               "Total assets match total equity and liabilities", "Balance sheet totals do not reconcile", ["data.total_assets", "data.total_equity_and_liabilities"]),
+        _check("financials.net_margin", abs(margin - profit / revenue * 100) <= 0.2 if revenue and profit is not None and margin is not None else None,
+               "Net margin agrees with profit after tax and revenue", "Net margin does not agree with profit after tax divided by revenue", ["data.net_margin", "data.profit_after_tax", "data.revenue"], warn_only=True),
+    ]
+    return checks
+
+
+def check_sanction_letter(d: SanctionLetter, as_of: date) -> list[Check]:
+    amount, tenure = _field_value(d, "sanctioned_amount"), _field_value(d, "tenure_months")
+    rate, emi = _field_value(d, "interest_rate_pct"), _field_value(d, "emi_amount")
+    recomputed = None
+    if amount and tenure and rate is not None:
+        monthly = rate / 1200
+        recomputed = amount / tenure if monthly == 0 else amount * monthly / (1 - (1 + monthly) ** -tenure)
+    return [
+        _check("sanction.amount_positive", amount > 0 if amount is not None else None,
+               "Sanctioned amount is positive", "Sanctioned amount must be positive", ["data.sanctioned_amount"]),
+        _check("sanction.emi_math", abs(recomputed - emi) <= max(1.0, emi * 0.02) if recomputed is not None and emi is not None else None,
+               "EMI is consistent with amount, rate and tenure", "Printed EMI differs from the reducing-balance calculation", ["data.emi_amount", "data.sanctioned_amount", "data.interest_rate_pct", "data.tenure_months"], warn_only=True),
+        _check("sanction.date_not_future", _field_value(d, "sanction_date") <= as_of if _field_value(d, "sanction_date") is not None else None,
+               "Sanction date is not in the future", "Sanction date is in the future", ["data.sanction_date"], warn_only=True),
+    ]
+
+
+def check_settlement_report(d: SettlementReport, as_of: date) -> list[Check]:
+    month_sum_ok = all(abs(m.gross - m.fees - m.net) <= TOLERANCE for m in d.months)
+    gross, fees, net = (_field_value(d, k) for k in ("total_gross", "total_fees", "total_net"))
+    totals_ok = abs(gross - fees - net) <= TOLERANCE if gross is not None and fees is not None and net is not None else None
+    unique = len({m.month for m in d.months}) == len(d.months)
+    return [
+        _check("settlement.month_math", month_sum_ok if d.months else None,
+               "Monthly gross less fees equals net settlement", "A monthly settlement total does not reconcile", ["data.months"]),
+        _check("settlement.total_math", totals_ok, "Report gross less fees equals net settlement", "Report totals do not reconcile", ["data.total_gross", "data.total_fees", "data.total_net"]),
+        _check("settlement.unique_months", unique, "Each settlement month appears once", "Settlement report contains duplicate months", ["data.months"]),
+    ]
+
+
 CHECKERS: dict[DocumentType, tuple[str, Callable]] = {
     DocumentType.PAN_CARD: ("pan", check_pan),
     DocumentType.AADHAAR: ("aadhaar", check_aadhaar),
@@ -286,6 +349,10 @@ CHECKERS: dict[DocumentType, tuple[str, Callable]] = {
     DocumentType.BANK_STATEMENT: ("bank", check_bank_statement),
     DocumentType.UDYAM: ("udyam", check_udyam),
     DocumentType.ITR_V: ("itr", check_itr_v),
+    DocumentType.BUREAU_REPORT: ("bureau", check_bureau_report),
+    DocumentType.FINANCIAL_STATEMENTS: ("financials", check_financial_statements),
+    DocumentType.SANCTION_LETTER: ("sanction", check_sanction_letter),
+    DocumentType.SETTLEMENT_REPORT: ("settlement", check_settlement_report),
 }
 
 

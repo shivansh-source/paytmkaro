@@ -34,13 +34,18 @@ from app.schemas.common import Address, BBox, DocumentType, Extracted, RowProven
 from app.schemas.documents import (
     Aadhaar,
     BankStatement,
+    BureauReport,
     DocumentEnvelope,
+    FinancialStatements,
     FileInfo,
     GstRegistration,
     Gstr3b,
     Gstr3bMonth,
     ItrV,
     PanCard,
+    SanctionLetter,
+    SettlementMonth,
+    SettlementReport,
     Transaction,
     Triage,
     Udyam,
@@ -54,6 +59,10 @@ ENVELOPE_TYPE: dict[DT, DocumentType] = {
     DT.ITR: DocumentType.ITR_V,
     DT.BANK_STATEMENT: DocumentType.BANK_STATEMENT,
     DT.UDYAM_CERTIFICATE: DocumentType.UDYAM,
+    DT.BUREAU_REPORT: DocumentType.BUREAU_REPORT,
+    DT.FINANCIAL_STATEMENTS: DocumentType.FINANCIAL_STATEMENTS,
+    DT.SANCTION_LETTER: DocumentType.SANCTION_LETTER,
+    DT.SETTLEMENT_REPORT: DocumentType.SETTLEMENT_REPORT,
 }
 
 SOURCE: dict[FieldSource, Source] = {
@@ -316,9 +325,78 @@ def _itr(c: _Ctx) -> ItrV:
     )
 
 
+def _bureau(c: _Ctx) -> BureauReport:
+    max_dpd = c.x("max_dpd_24m", int, required=False)
+    accounts = c.result.tables.get("accounts", [])
+    if (max_dpd is None or max_dpd.value is None) and accounts and all(row.get("dpd_max") is not None for row in accounts):
+        confidences = [float(row.get("confidence", 0.0)) for row in accounts]
+        max_dpd = Extracted(
+            value=max(int(row["dpd_max"]) for row in accounts),
+            confidence=min(confidences, default=0.0), source=Source.SYSTEM,
+            raw_text=None,
+        )
+    return BureauReport(
+        bureau_name=c.x("bureau_name", required=False), report_date=c.x("report_date", _iso, required=False),
+        score=c.x("score", int, required=False), cmr_rank=c.x("cmr_rank", int, required=False),
+        active_accounts=c.x("active_accounts", int, required=False),
+        total_outstanding=c.x("total_outstanding", float, required=False), overdue_amount=c.x("overdue_amount", float, required=False),
+        max_dpd_24m=max_dpd,
+        written_off_or_settled=c.x("written_off_or_settled", bool, required=False),
+        suit_filed_or_wilful_default=c.x("suit_filed_or_wilful_default", bool, required=False),
+        enquiries_90d=c.x("enquiries_90d", int, required=False),
+    )
+
+
+def _financial_statements(c: _Ctx) -> FinancialStatements:
+    date_keys = {"financial_year", "prior_financial_year"}
+    text_keys = {"audit_status"}
+    numeric_keys = {
+        "revenue", "prior_revenue", "profit_after_tax", "net_margin", "total_assets", "total_liabilities",
+        "total_equity_and_liabilities", "net_worth", "long_term_borrowings", "short_term_borrowings", "debt_to_equity",
+        "ebitda", "depreciation", "interest_expense", "principal_repayments", "dscr",
+    }
+    values = {name: c.x(name, required=False) for name in date_keys | text_keys}
+    values.update({name: c.x(name, float, required=False) for name in numeric_keys})
+    return FinancialStatements(**values)
+
+
+def _sanction(c: _Ctx) -> SanctionLetter:
+    return SanctionLetter(
+        facility_type=c.x("facility_type", required=False), sanctioned_amount=c.x("sanctioned_amount", float, required=False),
+        sanction_date=c.x("sanction_date", _iso, required=False), interest_rate_pct=c.x("interest_rate_pct", float, required=False),
+        rate_type=c.x("rate_type", required=False), tenure_months=c.x("tenure_months", int, required=False),
+        emi_amount=c.x("emi_amount", float, required=False), fd_lien_or_margin=c.x("fd_lien_or_margin", bool, required=False),
+        security=c.x("security", required=False),
+    )
+
+
+def _settlement(c: _Ctx) -> SettlementReport:
+    months = []
+    for row in c.result.tables.get("monthly", []):
+        month = row.get("month")
+        gross, fees, net = row.get("gross"), row.get("fees"), row.get("net")
+        if not all(v is not None for v in (month, gross, fees, net)):
+            c.notes.append("Settlement month omitted because month, gross, fees or net was not readable")
+            continue
+        try:
+            months.append(SettlementMonth(month=month, gross=float(gross), fees=float(fees), net=float(net),
+                                          fee_pct=float(row.get("fee_pct") or (float(fees) / float(gross) * 100 if float(gross) else 0)),
+                                          txn_count=int(row["txn_count"]) if row.get("txn_count") is not None else None))
+        except (TypeError, ValueError):
+            c.notes.append("Settlement month omitted because one of its values could not be represented")
+    return SettlementReport(
+        provider=c.x("provider", required=False), merchant_id_last4=c.x("merchant_id_last4", _last4, required=False, boxed=False),
+        period_from=c.x("period_from", _iso, required=False), period_to=c.x("period_to", _iso, required=False), months=months,
+        total_gross=c.x("total_gross", float, required=False), total_fees=c.x("total_fees", float, required=False),
+        total_net=c.x("total_net", float, required=False),
+    )
+
+
 BUILDERS: dict[DT, Callable[[_Ctx], Any]] = {
     DT.PAN_CARD: _pan, DT.AADHAAR: _aadhaar, DT.GST_CERTIFICATE: _gst, DT.GSTR_3B: _gstr3b,
     DT.ITR: _itr, DT.BANK_STATEMENT: _bank, DT.UDYAM_CERTIFICATE: _udyam,
+    DT.BUREAU_REPORT: _bureau, DT.FINANCIAL_STATEMENTS: _financial_statements,
+    DT.SANCTION_LETTER: _sanction, DT.SETTLEMENT_REPORT: _settlement,
 }
 
 

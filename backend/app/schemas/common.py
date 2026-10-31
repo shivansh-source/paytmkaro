@@ -15,10 +15,10 @@ from typing import Annotated, Generic, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, computed_field
 
-# 1.1: Transaction.balance and Aadhaar.dob are optional, Aadhaar.year_of_birth / Transaction.ref / more
-# Triage.input_kind values were added. Readers must now cope with a null balance. Payloads written as "1.0"
-# still validate (nothing in them became invalid), so profiles saved in a browser keep working.
-SCHEMA_VERSION = "1.1"
+# 1.1 added optional bank balances, Aadhaar year of birth, transaction references and input-kind values.
+# 1.2 adds envelopes for bureau, financial statements, sanction letters and settlement reports, plus
+# optional bureau detail. Readers continue accepting 1.0 and 1.1 payloads.
+SCHEMA_VERSION = "1.2"
 
 # Fields below this confidence go to the user to confirm (unless already confirmed).
 REVIEW_CONFIDENCE = 0.85
@@ -64,6 +64,10 @@ class DocumentType(StrEnum):
     BANK_STATEMENT = "bank_statement"
     UDYAM = "udyam"
     ITR_V = "itr_v"
+    BUREAU_REPORT = "bureau_report"
+    FINANCIAL_STATEMENTS = "financial_statements"
+    SANCTION_LETTER = "sanction_letter"
+    SETTLEMENT_REPORT = "settlement_report"
 
 
 REQUIRED_DOCUMENTS: tuple[DocumentType, ...] = (
@@ -74,7 +78,13 @@ REQUIRED_DOCUMENTS: tuple[DocumentType, ...] = (
     DocumentType.BANK_STATEMENT,
     DocumentType.UDYAM,
 )
-OPTIONAL_DOCUMENTS: tuple[DocumentType, ...] = (DocumentType.ITR_V,)
+OPTIONAL_DOCUMENTS: tuple[DocumentType, ...] = (
+    DocumentType.ITR_V,
+    DocumentType.BUREAU_REPORT,
+    DocumentType.FINANCIAL_STATEMENTS,
+    DocumentType.SANCTION_LETTER,
+    DocumentType.SETTLEMENT_REPORT,
+)
 
 
 class Source(StrEnum):

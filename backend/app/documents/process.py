@@ -28,7 +28,7 @@ from app.documents.ports import OcrEngine, VlmClient
 from app.documents.vlm import get_default_vlm
 from app.documents.vlm.budget import VlmBudget
 from app.schemas.common import DocumentType as EnvelopeType
-from app.schemas.documents import DocumentEnvelope
+from app.schemas.documents import BureauReport, DocumentEnvelope
 from app.schemas.profile import BureauScore
 
 log = logging.getLogger(__name__)
@@ -62,8 +62,7 @@ class ProcessResult(BaseModel):
     message: str | None = None  # user-facing, set whenever status is not "ok"
     classification: ClassificationResult | None = None
     envelopes: list[DocumentEnvelope] = []
-    # Documents the envelope has no slot for (bureau report, financial statements, sanction letter,
-    # settlement report): their raw extraction is returned instead.
+    # Raw extraction is retained only for document types that have no envelope model yet.
     extractions: list[ExtractionResult] = []
     # The score read from an uploaded bureau report, always "self_declared": a document the borrower
     # supplies cannot verify a bureau score (the lender pulls its own with consent). It is a candidate
@@ -103,25 +102,33 @@ def process_upload(
         )
 
 
-def _self_provided_bureau(extractions: list[ExtractionResult]) -> BureauScore | None:
-    """The newest consumer score among the uploaded reports. A report with no credit history, an unreadable
-    or out-of-range score gives nothing, and the commercial CMR rank (1-10, lower is better) is never used."""
-    candidates: list[tuple[date, int, date | None]] = []
-    for extraction in extractions:
-        field = extraction.fields.get("score") if extraction.document_type == DocumentType.BUREAU_REPORT else None
-        if field is None or field.value is None:
+def _self_provided_bureau(envelopes: list[DocumentEnvelope]) -> BureauScore | None:
+    """Newest uploaded consumer score, marked self_declared; CMR never substitutes for that score."""
+    candidates: list[tuple[date, BureauReport]] = []
+    for envelope in envelopes:
+        report = envelope.data
+        if envelope.document_type != DocumentType.BUREAU_REPORT or not isinstance(report, BureauReport):
             continue
-        reported = extraction.fields.get("report_date")
-        try:
-            as_of = date.fromisoformat(str(reported.value)) if reported is not None and reported.value else None
-            candidates.append((as_of or date.min, int(field.value), as_of))
-        except (TypeError, ValueError):
+        score = report.score.value if report.score else None
+        if score is None:
             continue
+        as_of = report.report_date.value if report.report_date else None
+        candidates.append((as_of or date.min, report))
     if not candidates:
         return None
-    _, value, as_of = max(candidates, key=lambda c: c[0])
+    _, report = max(candidates, key=lambda c: c[0])
     try:
-        return BureauScore(value=value, source="self_declared", as_of=as_of)
+        return BureauScore(
+            value=report.score.value, source="self_declared",
+            as_of=report.report_date.value if report.report_date else None,
+            cmr_rank=report.cmr_rank.value if report.cmr_rank else None,
+            max_dpd_24m=report.max_dpd_24m.value if report.max_dpd_24m else None,
+            enquiries_90d=report.enquiries_90d.value if report.enquiries_90d else None,
+            written_off_or_settled=report.written_off_or_settled.value if report.written_off_or_settled else None,
+            suit_filed_or_wilful_default=report.suit_filed_or_wilful_default.value if report.suit_filed_or_wilful_default else None,
+            active_accounts=report.active_accounts.value if report.active_accounts else None,
+            overdue_amount=report.overdue_amount.value if report.overdue_amount else None,
+        )
     except ValidationError:
         return None
 
@@ -173,7 +180,7 @@ def _process(data, file_name, sme_id, password, expected_type, ocr, vlm, budget,
     if expected_type and usable and all(e.document_type != expected_type for e in usable):
         found = ", ".join(sorted({e.document_type.value.replace("_", " ") for e in usable}))
         result.warnings.append(f"You uploaded this as {expected_type.value.replace('_', ' ')}, but it looks like: {found}. We used what it is.")
-    result.bureau = _self_provided_bureau(result.extractions)
+    result.bureau = _self_provided_bureau(result.envelopes)
     if result.bureau is not None:
         result.warnings.append("bureau_report: the score comes from a report you uploaded, so it is unverified; the lender will pull its own.")
         for part in result.skipped:
@@ -181,7 +188,7 @@ def _process(data, file_name, sme_id, password, expected_type, ocr, vlm, budget,
                 part.reason = f"Credit report: we use its score ({result.bureau.value}) as self-declared; the lender checks its own."
     if not result.envelopes and not result.extractions:
         result.status = "nothing_recognised"
-        result.message = "We could not recognise any supported document in this file. Upload a PAN, Aadhaar, GST certificate, GSTR-3B, Udyam, ITR-V or bank statement."
+        result.message = "We could not recognise a supported document in this file. Check the document checklist and try another copy."
     result.vlm_requests_used = budget.used - start
     return result
 

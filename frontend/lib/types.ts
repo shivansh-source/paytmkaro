@@ -1,7 +1,7 @@
 // Mirrors of the backend contracts the dashboard reads (schemas/v1/msme, recommendation, offers).
 // Only the fields the UI uses; the JSON Schemas in /schemas are the full reference.
 
-export type DocumentType = "pan_card" | "aadhaar" | "gst_registration" | "gstr3b" | "bank_statement" | "udyam" | "itr_v";
+export type DocumentType = "pan_card" | "aadhaar" | "gst_registration" | "gstr3b" | "bank_statement" | "udyam" | "itr_v" | "bureau_report" | "financial_statements" | "sanction_letter" | "settlement_report";
 export type CheckStatus = "pass" | "warn" | "fail";
 export type DocumentStatus = "queued" | "extracting" | "needs_review" | "verified" | "failed";
 

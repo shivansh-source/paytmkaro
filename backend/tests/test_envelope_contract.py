@@ -102,17 +102,27 @@ def test_transaction_reference_is_its_own_field():
 from datetime import date as _date  # noqa: E402
 from pathlib import Path  # noqa: E402
 
-from app.documents.models import DocumentType as DocType  # noqa: E402
-from app.documents.models import ExtractedField, ExtractionResult, FieldSource  # noqa: E402
 from app.documents.process import _self_provided_bureau, process_upload  # noqa: E402
+from app.schemas.documents import BureauReport, DocumentEnvelope, FileInfo  # noqa: E402
+from datetime import datetime, timezone  # noqa: E402
 
 FIXTURES = Path(__file__).parent / "fixtures" / "documents"
 
 
 def bureau_result(**fields):
-    return ExtractionResult(
-        document_type=DocType.BUREAU_REPORT, status="ok",
-        fields={k: ExtractedField(value=v, source=FieldSource.TEXT_LAYER, confidence=0.9) for k, v in fields.items()},
+    extracted = {name: Extracted(value=value, confidence=0.9, source=Source.PARSER) for name, value in fields.items()
+                 if name in BureauReport.model_fields}
+    report = BureauReport(
+        bureau_name=extracted.get("bureau_name"), report_date=extracted.get("report_date"), score=extracted.get("score"),
+        cmr_rank=extracted.get("cmr_rank"), active_accounts=extracted.get("active_accounts"),
+        total_outstanding=extracted.get("total_outstanding"), overdue_amount=extracted.get("overdue_amount"),
+        max_dpd_24m=extracted.get("max_dpd_24m"), written_off_or_settled=extracted.get("written_off_or_settled"),
+        suit_filed_or_wilful_default=extracted.get("suit_filed_or_wilful_default"), enquiries_90d=extracted.get("enquiries_90d"),
+    )
+    return DocumentEnvelope(
+        document_id="bureau-test", sme_id="s", document_type=DocumentType.BUREAU_REPORT, status="needs_review",
+        uploaded_at=datetime.now(timezone.utc),
+        file=FileInfo(file_name="bureau.pdf", mime_type="application/pdf", size_bytes=10, sha256="a" * 64), data=report,
     )
 
 
@@ -248,17 +258,18 @@ def test_assessment_goes_pending_on_balance_parameters_when_few_balances_are_pri
 # ---- Schema version ----------------------------------------------------------------------------------------
 
 
-def test_schema_version_is_1_1_but_saved_1_0_payloads_still_validate():
+def test_schema_version_is_1_2_but_saved_1_0_and_1_1_payloads_still_validate():
     from app.schemas import SmeProfile
     from app.schemas.common import SCHEMA_VERSION
     from app.schemas.documents import DocumentEnvelope
     from app.schemas.examples import example_pan_envelope, example_sme_profile
 
-    assert SCHEMA_VERSION == "1.1"
-    assert example_pan_envelope().schema_version == "1.1" and example_sme_profile().schema_version == "1.1"
+    assert SCHEMA_VERSION == "1.2"
+    assert example_pan_envelope().schema_version == "1.2" and example_sme_profile().schema_version == "1.2"
     # The dashboard saves the profile in the browser and posts it back later: an older one must not be rejected.
     for model, build in ((DocumentEnvelope, example_pan_envelope), (SmeProfile, example_sme_profile)):
-        old = build().model_dump(mode="json") | {"schema_version": "1.0"}
-        assert model.model_validate(old).schema_version == "1.0"
+        for old_version in ("1.0", "1.1"):
+            old = build().model_dump(mode="json") | {"schema_version": old_version}
+            assert model.model_validate(old).schema_version == old_version
     with pytest.raises(ValidationError):
         SmeProfile.model_validate(example_sme_profile().model_dump(mode="json") | {"schema_version": "2.0"})
