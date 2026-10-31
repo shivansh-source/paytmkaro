@@ -11,7 +11,7 @@ import { useMsme } from "./MsmeProvider";
 export function Shell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { assessment, matches, sampleLabel, reset } = useMsme();
+  const { assessment, matches, sampleLabel, questionnaire, reset } = useMsme();
   const [session, setSession] = useState<Session | null>(null);
 
   useEffect(() => {
@@ -21,17 +21,21 @@ export function Shell({ children }: { children: ReactNode }) {
   }, [router]);
 
   const steps = [
+    { href: "/msme/start", label: "About your business", done: !!questionnaire && questionnaire !== "skipped" },
     { href: "/msme/upload", label: "Upload documents", done: !!assessment },
     { href: "/msme/review", label: "Review checks", done: !!assessment, locked: !assessment },
     { href: "/msme/readiness", label: "Readiness score", done: !!assessment?.profile.readiness, locked: !assessment },
     { href: "/msme/matches", label: "Lender matches", done: !!matches, locked: !assessment },
-    { href: "/msme/offer", label: "Offer & KFS", done: false, locked: !matches }
+    { href: "/msme/offer", label: "Offer & KFS", done: false, locked: !matches },
+    { href: "/msme/applications", label: "Applications", done: false, locked: !assessment }
   ];
 
   const signOut = () => {
     clearSession();
     reset();
-    router.push("/");
+    // Full navigation, not router.push: clearing the data makes the current page's
+    // "no assessment -> go to upload" guard fire, which would win a client-side race.
+    window.location.assign("/");
   };
 
   if (!session) return null;

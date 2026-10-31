@@ -197,3 +197,138 @@ export interface OfferEstimate {
   cooling_off: string;
   notes: string[];
 }
+
+// ---- Engine check detail (what the lender sees per rule) ----
+
+export interface RuleCheck {
+  rule: string;
+  outcome: "pass" | "warn" | "fail" | "missing";
+  message: string;
+  required?: unknown;
+  actual?: unknown;
+}
+
+export type MatchResultWithChecks = MatchResult & { checks: RuleCheck[] };
+
+// ---- Lender products (subset of schemas/v1/lender) ----
+
+export interface LenderProduct {
+  id: string;
+  lender: string;
+  product: string;
+  institution_type: string;
+  product_type: string;
+  scheme?: string | null;
+  ticket_size?: { min: number; max: number } | null;
+  tenure_months?: { min: number; max: number } | null;
+  min_business_vintage_months?: number | null;
+  min_annual_turnover?: number | null;
+  min_bureau_score?: number | null;
+  bureau_score_is_hard_cutoff?: boolean | null;
+  max_foir?: number | null;
+  max_bounces_6m?: number | null;
+  gst_required: boolean;
+  itr_required?: boolean | null;
+  udyam_required?: boolean | null;
+  allowed_constitutions?: string[] | null;
+  excluded_sectors: string[];
+  collateral: string;
+  pricing: { apr_range: [number, number]; processing_fee_pct: number; apr_basis: string; indicative_only: boolean };
+  source_confidence: string;
+  record_status: string;
+}
+
+// ---- Applications ----
+
+export type ApplicationStatus = "submitted" | "in_review" | "approved_in_principle" | "info_requested" | "declined" | "withdrawn";
+export type DeclineReason = "vintage" | "turnover" | "cash_flow" | "credit_history" | "documents" | "policy" | "other";
+
+export interface ApplicationSummary {
+  id: string;
+  sme_id: string;
+  business_name: string;
+  lender: string;
+  product_id: string;
+  product: string;
+  amount: number;
+  tenure_months: number | null;
+  status: ApplicationStatus;
+  readiness_score: number | null;
+  readiness_band: string | null;
+  red_flags: number;
+  warnings: number;
+  fit_label: MatchResult["fit_label"];
+  true_apr_pct: number | null;
+  submitted_at: string;
+  updated_at: string;
+  decision_message?: string | null;
+}
+
+export interface Application {
+  id: string;
+  status: ApplicationStatus;
+  submitted_at: string;
+  updated_at: string;
+  lender: string;
+  product_id: string;
+  product: string;
+  request: LoanRequest;
+  match: MatchResultWithChecks;
+  profile: Profile;
+  documents: Envelope[];
+  consent: { text: string; accepted_at: string };
+  decision?: {
+    action: "approve_in_principle" | "request_info" | "decline";
+    reason?: DeclineReason | null;
+    note?: string | null;
+    decided_at: string;
+    message_for_msme: string;
+  } | null;
+  history: { at: string; actor: "msme" | "lender" | "system"; action: string; note?: string | null }[];
+}
+
+export interface DecisionBody {
+  action: "start_review" | "approve_in_principle" | "request_info" | "decline";
+  reason?: DeclineReason;
+  note?: string;
+}
+
+// ---- Pre-qualification questionnaire (self-declared, before upload) ----
+
+export interface QuestionnaireAnswers {
+  sector: "retail" | "trading" | "manufacturing" | "services" | "food" | "other";
+  constitution: "proprietorship" | "partnership" | "llp" | "pvt_ltd" | "not_sure";
+  started_year: number;
+  started_month: number;
+  annual_sales: "under_10l" | "10l_25l" | "25l_1cr" | "over_1cr";
+  loan_amount: number;
+  tenure_months: number;
+  purpose: string;
+  existing_emi_monthly: number;
+  bounces_6m: "none" | "1_2" | "3_plus" | "not_sure";
+  has_gst: boolean;
+  has_udyam: boolean;
+  has_itr: boolean;
+  credit_score: number | null;
+}
+
+export interface ChecklistItem {
+  document_type: DocumentType;
+  status: "required" | "recommended" | "optional" | "not_needed";
+  why: string;
+}
+
+export interface Prequalification {
+  estimates: { business_vintage_months: number; annual_turnover: number; foir: number | null; bounces_6m: number | null };
+  matches: MatchResult[];
+  checklist: ChecklistItem[];
+  notes: string[];
+}
+
+export interface Interpretation {
+  updates: Partial<QuestionnaireAnswers>;
+  understood: string | null;
+  answered_step: boolean;
+  source: "rules" | "ai" | "none";
+  message: string | null;
+}

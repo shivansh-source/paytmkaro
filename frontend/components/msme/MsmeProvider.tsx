@@ -3,9 +3,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { api } from "../../lib/api";
-import type { AssessBody, Assessment, LoanRequest, MatchResult, SortOrder } from "../../lib/types";
+import type { AssessBody, Assessment, LoanRequest, MatchResult, Prequalification, QuestionnaireAnswers, SortOrder } from "../../lib/types";
 
 interface MsmeState {
+  // Pre-qualification: self-declared answers, or skipped. Verified values replace them after upload.
+  questionnaire: { answers: QuestionnaireAnswers; result: Prequalification } | "skipped" | null;
   sampleLabel: string | null;
   assessBody: AssessBody | null; // what we sent to /assess; re-sent when the SME confirms a field
   assessment: Assessment | null;
@@ -16,6 +18,8 @@ interface MsmeState {
 
 interface MsmeContext extends MsmeState {
   ready: boolean; // localStorage loaded
+  saveQuestionnaire: (answers: QuestionnaireAnswers, result: Prequalification) => void;
+  skipQuestionnaire: () => void;
   busy: boolean;
   error: string | null;
   loadSample: (id: "a" | "b") => Promise<void>;
@@ -29,6 +33,7 @@ interface MsmeContext extends MsmeState {
 
 const KEY = "creditsetu.msme";
 const INITIAL: MsmeState = {
+  questionnaire: null,
   sampleLabel: null,
   assessBody: null,
   assessment: null,
@@ -75,11 +80,17 @@ export function MsmeProvider({ children }: { children: ReactNode }) {
     (id: "a" | "b") =>
       run(async () => {
         const sample = await api.sample(id);
-        const { label, ...body } = sample;
+        const { label, ...rest } = sample;
+        const told = state.questionnaire && state.questionnaire !== "skipped" ? state.questionnaire.answers : null;
+        const body = {
+          ...rest,
+          sector: told?.sector ?? rest.sector,
+          bureau: told?.credit_score ? { value: told.credit_score, source: "self_declared" } : rest.bureau
+        };
         const assessment = await api.assess(body);
         setState((s) => ({ ...s, sampleLabel: label, assessBody: body, assessment, matches: null }));
       }),
-    [run]
+    [run, state.questionnaire]
   );
 
   const confirmFields = useCallback(
@@ -132,6 +143,14 @@ export function MsmeProvider({ children }: { children: ReactNode }) {
       confirmFields,
       refreshMatches,
       setRequest: (request) => setState((s) => ({ ...s, request })),
+      saveQuestionnaire: (answers, result) =>
+        setState((s) => ({
+          ...s,
+          questionnaire: { answers, result },
+          request: { amount: answers.loan_amount, tenure_months: answers.tenure_months, purpose: answers.purpose },
+          matches: null
+        })),
+      skipQuestionnaire: () => setState((s) => ({ ...s, questionnaire: "skipped" })),
       setSort: (sort) => setState((s) => ({ ...s, sort })),
       reset: () => setState(INITIAL)
     }),

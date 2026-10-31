@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { ApplyPanel } from "../../../../components/msme/ApplyPanel";
 import { useMsme } from "../../../../components/msme/MsmeProvider";
 import { ErrorNote, PageHeader } from "../../../../components/msme/ui";
 import { api } from "../../../../lib/api";
@@ -46,7 +47,7 @@ export default function OfferPage() {
 
   return (
     <>
-      <PageHeader eyebrow="Step 5 of 5 · Key Fact Statement" title={`${offer.lender}: ${offer.product}`}>
+      <PageHeader eyebrow="Step 6 of 6 · Key Fact Statement" title={`${offer.lender}: ${offer.product}`}>
         The full cost of this loan in plain numbers, before you apply.
       </PageHeader>
 
@@ -83,6 +84,8 @@ export default function OfferPage() {
           </dl>
         </div>
       </section>
+
+      <ApplyPanel productId={offer.product_id} lender={offer.lender} />
 
       <section className="panel fade-in">
         <h2 className="section-title">Your right to cancel</h2>

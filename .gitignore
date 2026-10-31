@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 .venv/
 .pytest_cache/
+*.sqlite3
 
 # Node / Next.js
 node_modules/
@@ -20,3 +21,6 @@ frontend/movies/
 *.docx
 # ...but test fixtures must be committed
 !backend/tests/fixtures/**/*.docx
+
+# TypeScript incremental build cache
+*.tsbuildinfo

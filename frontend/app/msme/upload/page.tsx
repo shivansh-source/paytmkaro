@@ -11,7 +11,10 @@ import type { DocumentType } from "../../../lib/types";
 
 export default function UploadPage() {
   const router = useRouter();
-  const { assessment, loadSample, busy, error, ready } = useMsme();
+  const { assessment, loadSample, busy, error, ready, questionnaire } = useMsme();
+  // Personalised by the questionnaire, when answered.
+  const plan = questionnaire && questionnaire !== "skipped" ? questionnaire.result.checklist : null;
+  const planFor = (type: DocumentType) => plan?.find((c) => c.document_type === type);
   const [received, setReceived] = useState<Partial<Record<DocumentType, string>>>({});
 
   const statusOf = (type: DocumentType) => {
@@ -30,9 +33,16 @@ export default function UploadPage() {
 
   return (
     <>
-      <PageHeader eyebrow="Step 1 of 5" title="Upload your documents">
+      <PageHeader eyebrow="Step 2 of 6" title="Upload your documents">
         Photos, PDFs or scans all work. We read each one, check it, and cross-check them against each other before any
         lender sees your file.
+        {plan && " Based on your answers, we've marked what you need."}
+        {!questionnaire && (
+          <>
+            {" "}
+            <Link href="/msme/start">Answer 7 quick questions first</Link> to see only the documents you need.
+          </>
+        )}
       </PageHeader>
 
       <section className="panel demo-banner fade-in">
@@ -57,15 +67,20 @@ export default function UploadPage() {
 
       <section className="doc-grid">
         {DOCUMENTS.map((doc, i) => (
-          <article key={doc.type} className="doc-card fade-in" style={{ animationDelay: `${i * 40}ms` }}>
+          <article
+            key={doc.type}
+            className={`doc-card fade-in${planFor(doc.type)?.status === "not_needed" ? " not-needed" : ""}`}
+            style={{ animationDelay: `${i * 40}ms` }}
+          >
             <div className="doc-card-head">
               <h3>
                 {doc.name}
-                {doc.optional && <span className="optional"> · optional</span>}
+                {!plan && doc.optional && <span className="optional"> · optional</span>}
               </h3>
               <StatusPill status={statusOf(doc.type)} />
             </div>
-            <p className="muted">{doc.why}</p>
+            {planFor(doc.type) && <span className={`need need-${planFor(doc.type)!.status}`}>{planFor(doc.type)!.status.replace("_", " ")}</span>}
+            <p className="muted">{planFor(doc.type)?.why ?? doc.why}</p>
             <p className="doc-how">{doc.how}</p>
             <label className="file-drop">
               <input

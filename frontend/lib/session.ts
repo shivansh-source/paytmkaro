@@ -30,4 +30,4 @@ export function clearSession() {
 }
 
 export const DEMO_OTP = "123456";
-export const homeFor = (role: Role) => (role === "msme" ? "/msme/upload" : "/lender");
+export const homeFor = (role: Role) => (role === "msme" ? "/msme/start" : "/lender");
