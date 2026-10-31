@@ -7,41 +7,14 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 
-from app.schemas.common import DocumentType, Schema
-from app.schemas.documents import BureauReport, DocumentEnvelope
+from app.bureau import self_declared_bureau_score
+from app.schemas.common import Schema
+from app.schemas.documents import DocumentEnvelope
 from app.schemas.profile import BureauScore, DocumentSummary, SmeProfile
 from app.scoring.fixit import build_fix_it
 from app.scoring.metrics import build_identity, compute_metrics
 from app.scoring.readiness import score_readiness
 from app.validation import validate_all
-
-
-def _bureau_from_documents(envelopes: list[DocumentEnvelope]) -> BureauScore | None:
-    """Use the newest borrower-uploaded consumer score only as self-declared input.
-
-    A commercial CMR rank is retained on its own document and is never converted to a consumer score.
-    """
-    candidates: list[tuple[date, BureauReport]] = []
-    for envelope in envelopes:
-        data = envelope.data
-        if envelope.document_type != DocumentType.BUREAU_REPORT or not isinstance(data, BureauReport):
-            continue
-        if data.score is None or data.score.value is None:
-            continue
-        candidates.append((data.report_date.value if data.report_date and data.report_date.value else date.min, data))
-    if not candidates:
-        return None
-    _, report = max(candidates, key=lambda pair: pair[0])
-    return BureauScore(
-        value=report.score.value, source="self_declared", as_of=report.report_date.value if report.report_date else None,
-        cmr_rank=report.cmr_rank.value if report.cmr_rank else None,
-        max_dpd_24m=report.max_dpd_24m.value if report.max_dpd_24m else None,
-        enquiries_90d=report.enquiries_90d.value if report.enquiries_90d else None,
-        written_off_or_settled=report.written_off_or_settled.value if report.written_off_or_settled else None,
-        suit_filed_or_wilful_default=report.suit_filed_or_wilful_default.value if report.suit_filed_or_wilful_default else None,
-        active_accounts=report.active_accounts.value if report.active_accounts else None,
-        overdue_amount=report.overdue_amount.value if report.overdue_amount else None,
-    )
 
 
 class Assessment(Schema):
@@ -59,7 +32,7 @@ def assess(
 ) -> Assessment:
     as_of = as_of or date.today()
     if bureau is None:
-        bureau = _bureau_from_documents(envelopes)
+        bureau = self_declared_bureau_score(envelopes)
     documents, docs, cross = validate_all(envelopes, as_of)
     metrics = compute_metrics(docs)
     profile = SmeProfile(

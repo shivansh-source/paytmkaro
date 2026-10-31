@@ -102,7 +102,8 @@ def test_transaction_reference_is_its_own_field():
 from datetime import date as _date  # noqa: E402
 from pathlib import Path  # noqa: E402
 
-from app.documents.process import _self_provided_bureau, process_upload  # noqa: E402
+from app.bureau import self_declared_bureau_score  # noqa: E402
+from app.documents.process import process_upload  # noqa: E402
 from app.schemas.documents import BureauReport, DocumentEnvelope, FileInfo  # noqa: E402
 from datetime import datetime, timezone  # noqa: E402
 
@@ -141,10 +142,18 @@ def test_commercial_report_gives_no_score():
 
 
 def test_no_history_unreadable_or_cmr_only_reports_give_no_score():
-    assert _self_provided_bureau([bureau_result(no_credit_history=True)]) is None
-    assert _self_provided_bureau([bureau_result(cmr_rank=4)]) is None
-    assert _self_provided_bureau([bureau_result(score=None)]) is None
-    assert _self_provided_bureau([]) is None
+    assert self_declared_bureau_score([bureau_result(no_credit_history=True)]) is None
+    assert self_declared_bureau_score([bureau_result(cmr_rank=4)]) is None
+    assert self_declared_bureau_score([bureau_result(score=None)]) is None
+    assert self_declared_bureau_score([]) is None
+
+
+def test_out_of_range_bureau_score_is_skipped_without_discarding_older_valid_score():
+    older = bureau_result(score=640, report_date="2025-01-10")
+    invalid = bureau_result(score=942, report_date="2026-09-30")
+
+    assert self_declared_bureau_score([invalid]) is None
+    assert self_declared_bureau_score([older, invalid]).value == 640
 
 
 def test_the_newest_report_wins_and_an_undated_one_loses_to_a_dated_one():
@@ -152,10 +161,10 @@ def test_the_newest_report_wins_and_an_undated_one_loses_to_a_dated_one():
     newer = bureau_result(score=700, report_date="2026-09-30")
     undated = bureau_result(score=800)
 
-    assert _self_provided_bureau([older, newer]).value == 700
-    assert _self_provided_bureau([newer, older]).value == 700
-    assert _self_provided_bureau([undated, older]).value == 640
-    assert _self_provided_bureau([newer]).as_of == _date(2026, 9, 30)
+    assert self_declared_bureau_score([older, newer]).value == 700
+    assert self_declared_bureau_score([newer, older]).value == 700
+    assert self_declared_bureau_score([undated, older]).value == 640
+    assert self_declared_bureau_score([newer]).as_of == _date(2026, 9, 30)
 
 
 # ---- Optional running balance ------------------------------------------------------------------------------

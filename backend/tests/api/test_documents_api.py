@@ -38,6 +38,29 @@ def test_uploaded_documents_feed_assess():
     assert 0 <= body["profile"]["readiness"]["score"] <= 100
 
 
+def test_out_of_range_uploaded_bureau_score_is_flagged_without_failing_assessment():
+    envelope = {
+        "document_id": "bureau-out-of-range",
+        "sme_id": "T-API",
+        "document_type": "bureau_report",
+        "status": "needs_review",
+        "uploaded_at": "2026-10-31T00:00:00Z",
+        "file": {"file_name": "bureau_report.pdf", "mime_type": "application/pdf", "size_bytes": 1, "sha256": "a" * 64},
+        "data": {
+            "document_type": "bureau_report",
+            "score": {"value": 942, "confidence": 0.9, "source": "parser"},
+        },
+    }
+
+    response = client.post("/v1/assess", json={"sme_id": "T-API", "documents": [envelope]})
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["profile"]["bureau"] is None
+    score_check = next(check for check in body["documents"][0]["checks"] if check["id"] == "bureau.score_range")
+    assert score_check["status"] == "fail"
+
+
 def test_password_and_unsupported_files_are_explained_not_errors():
     locked = post("e_aadhaar_encrypted.pdf")
     assert locked["status"] == "password_required" and "password" in locked["message"].lower()

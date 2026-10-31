@@ -14,11 +14,12 @@ from __future__ import annotations
 
 import importlib.util
 import logging
-from datetime import date, datetime
+from datetime import datetime
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 
 from app import config
+from app.bureau import self_declared_bureau_score
 from app.documents.classify import classify
 from app.documents.extract.envelope import ENVELOPE_TYPE, build_envelope, has_envelope
 from app.documents.extract.pipeline import extract_detailed
@@ -28,7 +29,7 @@ from app.documents.ports import OcrEngine, VlmClient
 from app.documents.vlm import get_default_vlm
 from app.documents.vlm.budget import VlmBudget
 from app.schemas.common import DocumentType as EnvelopeType
-from app.schemas.documents import BureauReport, DocumentEnvelope
+from app.schemas.documents import DocumentEnvelope
 from app.schemas.profile import BureauScore
 
 log = logging.getLogger(__name__)
@@ -102,37 +103,6 @@ def process_upload(
         )
 
 
-def _self_provided_bureau(envelopes: list[DocumentEnvelope]) -> BureauScore | None:
-    """Newest uploaded consumer score, marked self_declared; CMR never substitutes for that score."""
-    candidates: list[tuple[date, BureauReport]] = []
-    for envelope in envelopes:
-        report = envelope.data
-        if envelope.document_type != DocumentType.BUREAU_REPORT or not isinstance(report, BureauReport):
-            continue
-        score = report.score.value if report.score else None
-        if score is None:
-            continue
-        as_of = report.report_date.value if report.report_date else None
-        candidates.append((as_of or date.min, report))
-    if not candidates:
-        return None
-    _, report = max(candidates, key=lambda c: c[0])
-    try:
-        return BureauScore(
-            value=report.score.value, source="self_declared",
-            as_of=report.report_date.value if report.report_date else None,
-            cmr_rank=report.cmr_rank.value if report.cmr_rank else None,
-            max_dpd_24m=report.max_dpd_24m.value if report.max_dpd_24m else None,
-            enquiries_90d=report.enquiries_90d.value if report.enquiries_90d else None,
-            written_off_or_settled=report.written_off_or_settled.value if report.written_off_or_settled else None,
-            suit_filed_or_wilful_default=report.suit_filed_or_wilful_default.value if report.suit_filed_or_wilful_default else None,
-            active_accounts=report.active_accounts.value if report.active_accounts else None,
-            overdue_amount=report.overdue_amount.value if report.overdue_amount else None,
-        )
-    except ValidationError:
-        return None
-
-
 def _process(data, file_name, sme_id, password, expected_type, ocr, vlm, budget, uploaded_at, start) -> ProcessResult:
     document = load_document(data, file_name, password=password, ocr=ocr)
     if document.status != LoadStatus.OK:
@@ -180,7 +150,7 @@ def _process(data, file_name, sme_id, password, expected_type, ocr, vlm, budget,
     if expected_type and usable and all(e.document_type != expected_type for e in usable):
         found = ", ".join(sorted({e.document_type.value.replace("_", " ") for e in usable}))
         result.warnings.append(f"You uploaded this as {expected_type.value.replace('_', ' ')}, but it looks like: {found}. We used what it is.")
-    result.bureau = _self_provided_bureau(result.envelopes)
+    result.bureau = self_declared_bureau_score(result.envelopes)
     if result.bureau is not None:
         result.warnings.append("bureau_report: the score comes from a report you uploaded, so it is unverified; the lender will pull its own.")
         for part in result.skipped:
