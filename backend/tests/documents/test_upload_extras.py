@@ -44,15 +44,19 @@ def test_bundle_parts_that_cannot_be_read_are_explained():
     assert [s.pages for s in result.skipped] == [[2, 3]] and "OCR" in result.skipped[0].reason
 
 
-def test_types_we_do_not_score_yet_say_so():
+def test_financial_statements_are_returned_as_typed_envelopes():
     result = upload("financial_statements.pdf")
-    assert "isn't used in your score yet" in result.skipped[0].reason
+    assert [env.document_type for env in result.envelopes] == [DocumentType.FINANCIAL_STATEMENTS]
+    assert result.extractions == []
+    assert result.skipped == []
 
 
 def test_bureau_report_score_is_offered_as_self_declared():
     result = upload("bureau_report.pdf")
     assert result.bureau is not None and result.bureau.source == "self_declared"
-    assert f"({result.bureau.value})" in result.skipped[0].reason
+    assert [env.document_type for env in result.envelopes] == [DocumentType.BUREAU_REPORT]
+    assert any("unverified" in warning for warning in result.warnings)
+    assert result.skipped == []
 
 
 def test_wrong_slot_warns_but_uses_what_the_document_is():

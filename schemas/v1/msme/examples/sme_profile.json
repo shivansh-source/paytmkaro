@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.1",
+  "schema_version": "1.2",
   "sme_id": "SAMPLE-A",
   "updated_at": "2026-10-30T10:00:00Z",
   "identity": {
@@ -193,7 +193,14 @@
   "bureau": {
     "value": 760,
     "source": "mock",
-    "as_of": null
+    "as_of": null,
+    "cmr_rank": null,
+    "max_dpd_24m": null,
+    "enquiries_90d": null,
+    "written_off_or_settled": null,
+    "suit_filed_or_wilful_default": null,
+    "active_accounts": null,
+    "overdue_amount": null
   },
   "documents": [
     {

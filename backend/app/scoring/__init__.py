@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 
+from app.bureau import self_declared_bureau_score
 from app.schemas.common import Schema
 from app.schemas.documents import DocumentEnvelope
 from app.schemas.profile import BureauScore, DocumentSummary, SmeProfile
@@ -30,6 +31,8 @@ def assess(
     as_of: date | None = None,
 ) -> Assessment:
     as_of = as_of or date.today()
+    if bureau is None:
+        bureau = self_declared_bureau_score(envelopes)
     documents, docs, cross = validate_all(envelopes, as_of)
     metrics = compute_metrics(docs)
     profile = SmeProfile(

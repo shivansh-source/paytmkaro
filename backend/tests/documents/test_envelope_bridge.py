@@ -74,11 +74,14 @@ def test_failed_extraction_is_a_failed_envelope_with_error():
     assert DocumentEnvelope.model_validate(out.envelope.model_dump())
 
 
-@pytest.mark.parametrize("kind", [DT.BUREAU_REPORT, DT.FINANCIAL_STATEMENTS, DT.SANCTION_LETTER, DT.SETTLEMENT_REPORT, DT.UNKNOWN])
-def test_types_without_an_envelope_slot_return_none(kind):
-    assert not has_envelope(kind)
-    result = ExtractionResult(document_type=kind, status="ok")
-    assert to_envelope(result, text_doc("x"), sme_id="s", document_id="d") is None
+@pytest.mark.parametrize("kind", [DT.BUREAU_REPORT, DT.FINANCIAL_STATEMENTS, DT.SANCTION_LETTER, DT.SETTLEMENT_REPORT])
+def test_new_document_types_have_envelope_slots(kind):
+    assert has_envelope(kind)
+
+
+def test_unknown_document_type_has_no_envelope_slot():
+    assert not has_envelope(DT.UNKNOWN)
+    assert to_envelope(ExtractionResult(document_type=DT.UNKNOWN, status="ok"), text_doc("x"), sme_id="s", document_id="d") is None
 
 
 def test_aadhaar_last4_verhoeff_flag_and_address():

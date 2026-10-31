@@ -15,6 +15,10 @@ DOCUMENT_NAMES = {
     DocumentType.BANK_STATEMENT: "bank statement (last 6-12 months)",
     DocumentType.UDYAM: "Udyam certificate",
     DocumentType.ITR_V: "ITR-V",
+    DocumentType.BUREAU_REPORT: "credit bureau report",
+    DocumentType.FINANCIAL_STATEMENTS: "audited or CA-certified financial statements",
+    DocumentType.SANCTION_LETTER: "loan sanction letter",
+    DocumentType.SETTLEMENT_REPORT: "payment settlement report",
 }
 
 # What to tell the SME for a failed / flagged check, by check id. Missing ids fall back to the message.

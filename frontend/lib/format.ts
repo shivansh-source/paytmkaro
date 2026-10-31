@@ -32,7 +32,11 @@ export const DOCUMENTS: { type: DocumentType; name: string; why: string; how: st
   { type: "gstr3b", name: "GSTR-3B returns", why: "Declared turnover, last 6 months", how: "PDF" },
   { type: "bank_statement", name: "Bank statement", why: "Real cash flow: balances, bounces, EMIs", how: "PDF, last 6-12 months" },
   { type: "udyam", name: "Udyam certificate", why: "Confirms MSME status and category", how: "PDF or photo" },
-  { type: "itr_v", name: "ITR-V", why: "Declared income, for lenders that ask for it", how: "PDF", optional: true }
+  { type: "itr_v", name: "ITR-V", why: "Declared income, for lenders that ask for it", how: "PDF", optional: true },
+  { type: "bureau_report", name: "Credit bureau report", why: "Uploaded score and credit history; lender verifies independently", how: "PDF", optional: true },
+  { type: "financial_statements", name: "Financial statements", why: "Revenue, profit and balance sheet", how: "PDF, XLSX or DOCX", optional: true },
+  { type: "sanction_letter", name: "Loan sanction letter", why: "Existing facilities and repayment terms", how: "PDF or DOCX", optional: true },
+  { type: "settlement_report", name: "Payment settlement report", why: "Payment aggregator collections and fees", how: "CSV, XLSX or PDF", optional: true }
 ];
 
 export const documentName = (type: DocumentType) => DOCUMENTS.find((d) => d.type === type)?.name ?? type;
@@ -78,17 +82,75 @@ export const FIELD_LABEL: Record<string, string> = {
   itr_form: "ITR form",
   gross_total_income: "Gross total income",
   acknowledgement_number: "Acknowledgement no.",
-  filing_date: "Filed on"
+  filing_date: "Filed on",
+  bureau_name: "Credit bureau",
+  report_date: "Report date",
+  score: "Consumer credit score",
+  cmr_rank: "Commercial CMR rank",
+  active_accounts: "Active credit accounts",
+  total_outstanding: "Total outstanding",
+  overdue_amount: "Overdue amount",
+  max_dpd_24m: "Maximum DPD (24 months)",
+  written_off_or_settled: "Written off or settled",
+  suit_filed_or_wilful_default: "Suit filed or wilful default",
+  enquiries_90d: "Credit enquiries (90 days)",
+  financial_year: "Financial year",
+  prior_financial_year: "Previous financial year",
+  audit_status: "Statement status",
+  revenue: "Revenue",
+  prior_revenue: "Previous year revenue",
+  profit_after_tax: "Profit after tax",
+  net_margin: "Net margin",
+  total_assets: "Total assets",
+  total_liabilities: "Total liabilities",
+  total_equity_and_liabilities: "Equity and liabilities",
+  net_worth: "Net worth",
+  long_term_borrowings: "Long-term borrowings",
+  short_term_borrowings: "Short-term borrowings",
+  debt_to_equity: "Debt-to-equity ratio",
+  ebitda: "EBITDA",
+  depreciation: "Depreciation",
+  interest_expense: "Interest expense",
+  principal_repayments: "Principal repayments",
+  dscr: "Debt service coverage ratio",
+  facility_type: "Facility type",
+  sanctioned_amount: "Sanctioned amount",
+  sanction_date: "Sanction date",
+  interest_rate_pct: "Interest rate",
+  rate_type: "Rate type",
+  tenure_months: "Tenure",
+  emi_amount: "Monthly EMI",
+  fd_lien_or_margin: "Fixed deposit lien or margin",
+  security: "Security / collateral",
+  provider: "Payment provider",
+  merchant_id_last4: "Merchant ID (last 4)",
+  total_gross: "Total gross settlements",
+  total_fees: "Total fees",
+  total_net: "Total net settlements"
 };
 
-const MONEY_FIELDS = new Set(["opening_balance", "closing_balance", "gross_total_income"]);
-const DATE_FIELDS = new Set(["dob", "registration_date", "period_from", "period_to", "date_of_incorporation", "date_of_registration", "filing_date"]);
+const MONEY_FIELDS = new Set([
+  "opening_balance", "closing_balance", "gross_total_income", "total_outstanding", "overdue_amount",
+  "revenue", "prior_revenue", "profit_after_tax", "total_assets", "total_liabilities",
+  "total_equity_and_liabilities", "net_worth", "long_term_borrowings", "short_term_borrowings", "ebitda",
+  "depreciation", "interest_expense", "principal_repayments", "sanctioned_amount", "emi_amount",
+  "total_gross", "total_fees", "total_net"
+]);
+const DATE_FIELDS = new Set([
+  "dob", "registration_date", "period_from", "period_to", "date_of_incorporation", "date_of_registration",
+  "filing_date", "report_date", "sanction_date"
+]);
+const PERCENT_FIELDS = new Set(["net_margin", "interest_rate_pct"]);
+const RATIO_FIELDS = new Set(["debt_to_equity", "dscr"]);
 
 export function formatField(name: string, value: unknown): string {
   if (value == null) return "Not read";
   if (typeof value === "object" && value !== null && "text" in value) return String((value as { text: string }).text);
   if (MONEY_FIELDS.has(name) && typeof value === "number") return inr(value);
   if (DATE_FIELDS.has(name) && typeof value === "string") return formatDate(value);
+  if (PERCENT_FIELDS.has(name) && typeof value === "number") return `${new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value)}%`;
+  if (RATIO_FIELDS.has(name) && typeof value === "number") return `${new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value)}×`;
+  if (typeof value === "boolean") return value ? "Yes" : "No";
   if (name === "aadhaar_last4" || name === "account_number_last4") return `XXXX XXXX ${value}`;
   return String(value).replace(/_/g, " ");
 }

@@ -36,7 +36,8 @@ function brokenRows(doc: Envelope) {
 export function DocumentCard({ doc, onConfirm, busy = false }: { doc: Envelope; onConfirm?: (field: string) => void; busy?: boolean }) {
   const fields = Object.entries(doc.data ?? {}).filter(([, v]) => isExtracted(v)) as [string, Extracted][];
   const txns = (doc.data?.transactions as Transaction[] | undefined) ?? null;
-  const months = (doc.data?.months as { period: string }[] | undefined) ?? null;
+  const months = (doc.data?.months as { period?: string; month?: string }[] | undefined) ?? null;
+  const monthNames = months?.map((m) => m.period ?? m.month).filter((m): m is string => Boolean(m)) ?? [];
   const broken = brokenRows(doc);
 
   return (
@@ -108,7 +109,7 @@ export function DocumentCard({ doc, onConfirm, busy = false }: { doc: Envelope; 
           {txns.filter((t) => t.tags.includes("emi")).length} EMI debits
         </p>
       )}
-      {months && <p className="muted small">{months.length} monthly returns: {months.map((m) => monthLabel(m.period)).join(", ")}</p>}
+      {months && <p className="muted small">{months.length} monthly records: {monthNames.map(monthLabel).join(", ")}</p>}
     </article>
   );
 }

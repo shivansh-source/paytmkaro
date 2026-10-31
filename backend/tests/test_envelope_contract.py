@@ -102,17 +102,28 @@ def test_transaction_reference_is_its_own_field():
 from datetime import date as _date  # noqa: E402
 from pathlib import Path  # noqa: E402
 
-from app.documents.models import DocumentType as DocType  # noqa: E402
-from app.documents.models import ExtractedField, ExtractionResult, FieldSource  # noqa: E402
-from app.documents.process import _self_provided_bureau, process_upload  # noqa: E402
+from app.bureau import self_declared_bureau_score  # noqa: E402
+from app.documents.process import process_upload  # noqa: E402
+from app.schemas.documents import BureauReport, DocumentEnvelope, FileInfo  # noqa: E402
+from datetime import datetime, timezone  # noqa: E402
 
 FIXTURES = Path(__file__).parent / "fixtures" / "documents"
 
 
 def bureau_result(**fields):
-    return ExtractionResult(
-        document_type=DocType.BUREAU_REPORT, status="ok",
-        fields={k: ExtractedField(value=v, source=FieldSource.TEXT_LAYER, confidence=0.9) for k, v in fields.items()},
+    extracted = {name: Extracted(value=value, confidence=0.9, source=Source.PARSER) for name, value in fields.items()
+                 if name in BureauReport.model_fields}
+    report = BureauReport(
+        bureau_name=extracted.get("bureau_name"), report_date=extracted.get("report_date"), score=extracted.get("score"),
+        cmr_rank=extracted.get("cmr_rank"), active_accounts=extracted.get("active_accounts"),
+        total_outstanding=extracted.get("total_outstanding"), overdue_amount=extracted.get("overdue_amount"),
+        max_dpd_24m=extracted.get("max_dpd_24m"), written_off_or_settled=extracted.get("written_off_or_settled"),
+        suit_filed_or_wilful_default=extracted.get("suit_filed_or_wilful_default"), enquiries_90d=extracted.get("enquiries_90d"),
+    )
+    return DocumentEnvelope(
+        document_id="bureau-test", sme_id="s", document_type=DocumentType.BUREAU_REPORT, status="needs_review",
+        uploaded_at=datetime.now(timezone.utc),
+        file=FileInfo(file_name="bureau.pdf", mime_type="application/pdf", size_bytes=10, sha256="a" * 64), data=report,
     )
 
 
@@ -131,10 +142,18 @@ def test_commercial_report_gives_no_score():
 
 
 def test_no_history_unreadable_or_cmr_only_reports_give_no_score():
-    assert _self_provided_bureau([bureau_result(no_credit_history=True)]) is None
-    assert _self_provided_bureau([bureau_result(cmr_rank=4)]) is None
-    assert _self_provided_bureau([bureau_result(score=None)]) is None
-    assert _self_provided_bureau([]) is None
+    assert self_declared_bureau_score([bureau_result(no_credit_history=True)]) is None
+    assert self_declared_bureau_score([bureau_result(cmr_rank=4)]) is None
+    assert self_declared_bureau_score([bureau_result(score=None)]) is None
+    assert self_declared_bureau_score([]) is None
+
+
+def test_out_of_range_bureau_score_is_skipped_without_discarding_older_valid_score():
+    older = bureau_result(score=640, report_date="2025-01-10")
+    invalid = bureau_result(score=942, report_date="2026-09-30")
+
+    assert self_declared_bureau_score([invalid]) is None
+    assert self_declared_bureau_score([older, invalid]).value == 640
 
 
 def test_the_newest_report_wins_and_an_undated_one_loses_to_a_dated_one():
@@ -142,10 +161,10 @@ def test_the_newest_report_wins_and_an_undated_one_loses_to_a_dated_one():
     newer = bureau_result(score=700, report_date="2026-09-30")
     undated = bureau_result(score=800)
 
-    assert _self_provided_bureau([older, newer]).value == 700
-    assert _self_provided_bureau([newer, older]).value == 700
-    assert _self_provided_bureau([undated, older]).value == 640
-    assert _self_provided_bureau([newer]).as_of == _date(2026, 9, 30)
+    assert self_declared_bureau_score([older, newer]).value == 700
+    assert self_declared_bureau_score([newer, older]).value == 700
+    assert self_declared_bureau_score([undated, older]).value == 640
+    assert self_declared_bureau_score([newer]).as_of == _date(2026, 9, 30)
 
 
 # ---- Optional running balance ------------------------------------------------------------------------------
@@ -248,17 +267,18 @@ def test_assessment_goes_pending_on_balance_parameters_when_few_balances_are_pri
 # ---- Schema version ----------------------------------------------------------------------------------------
 
 
-def test_schema_version_is_1_1_but_saved_1_0_payloads_still_validate():
+def test_schema_version_is_1_2_but_saved_1_0_and_1_1_payloads_still_validate():
     from app.schemas import SmeProfile
     from app.schemas.common import SCHEMA_VERSION
     from app.schemas.documents import DocumentEnvelope
     from app.schemas.examples import example_pan_envelope, example_sme_profile
 
-    assert SCHEMA_VERSION == "1.1"
-    assert example_pan_envelope().schema_version == "1.1" and example_sme_profile().schema_version == "1.1"
+    assert SCHEMA_VERSION == "1.2"
+    assert example_pan_envelope().schema_version == "1.2" and example_sme_profile().schema_version == "1.2"
     # The dashboard saves the profile in the browser and posts it back later: an older one must not be rejected.
     for model, build in ((DocumentEnvelope, example_pan_envelope), (SmeProfile, example_sme_profile)):
-        old = build().model_dump(mode="json") | {"schema_version": "1.0"}
-        assert model.model_validate(old).schema_version == "1.0"
+        for old_version in ("1.0", "1.1"):
+            old = build().model_dump(mode="json") | {"schema_version": old_version}
+            assert model.model_validate(old).schema_version == old_version
     with pytest.raises(ValidationError):
         SmeProfile.model_validate(example_sme_profile().model_dump(mode="json") | {"schema_version": "2.0"})

@@ -14,12 +14,16 @@ from pydantic import BaseModel
 from app.schemas import (
     Aadhaar,
     BankStatement,
+    BureauReport,
     DocumentEnvelope,
+    FinancialStatements,
     GstRegistration,
     Gstr3b,
     ItrV,
     LoanRequest,
     PanCard,
+    SanctionLetter,
+    SettlementReport,
     SmeProfile,
     Udyam,
 )
@@ -44,6 +48,10 @@ MODELS: dict[str, type[BaseModel]] = {
     "documents/bank_statement": BankStatement,
     "documents/udyam": Udyam,
     "documents/itr_v": ItrV,
+    "documents/bureau_report": BureauReport,
+    "documents/financial_statements": FinancialStatements,
+    "documents/sanction_letter": SanctionLetter,
+    "documents/settlement_report": SettlementReport,
 }
 
 EXAMPLES = {

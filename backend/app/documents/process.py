@@ -14,11 +14,12 @@ from __future__ import annotations
 
 import importlib.util
 import logging
-from datetime import date, datetime
+from datetime import datetime
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 
 from app import config
+from app.bureau import self_declared_bureau_score
 from app.documents.classify import classify
 from app.documents.extract.envelope import ENVELOPE_TYPE, build_envelope, has_envelope
 from app.documents.extract.pipeline import extract_detailed
@@ -62,8 +63,7 @@ class ProcessResult(BaseModel):
     message: str | None = None  # user-facing, set whenever status is not "ok"
     classification: ClassificationResult | None = None
     envelopes: list[DocumentEnvelope] = []
-    # Documents the envelope has no slot for (bureau report, financial statements, sanction letter,
-    # settlement report): their raw extraction is returned instead.
+    # Raw extraction is retained only for document types that have no envelope model yet.
     extractions: list[ExtractionResult] = []
     # The score read from an uploaded bureau report, always "self_declared": a document the borrower
     # supplies cannot verify a bureau score (the lender pulls its own with consent). It is a candidate
@@ -101,29 +101,6 @@ def process_upload(
             file_name=file_name, status="error", vlm_requests_used=budget.used - start,
             message="Something went wrong while reading this file. Please try again or upload a different copy.",
         )
-
-
-def _self_provided_bureau(extractions: list[ExtractionResult]) -> BureauScore | None:
-    """The newest consumer score among the uploaded reports. A report with no credit history, an unreadable
-    or out-of-range score gives nothing, and the commercial CMR rank (1-10, lower is better) is never used."""
-    candidates: list[tuple[date, int, date | None]] = []
-    for extraction in extractions:
-        field = extraction.fields.get("score") if extraction.document_type == DocumentType.BUREAU_REPORT else None
-        if field is None or field.value is None:
-            continue
-        reported = extraction.fields.get("report_date")
-        try:
-            as_of = date.fromisoformat(str(reported.value)) if reported is not None and reported.value else None
-            candidates.append((as_of or date.min, int(field.value), as_of))
-        except (TypeError, ValueError):
-            continue
-    if not candidates:
-        return None
-    _, value, as_of = max(candidates, key=lambda c: c[0])
-    try:
-        return BureauScore(value=value, source="self_declared", as_of=as_of)
-    except ValidationError:
-        return None
 
 
 def _process(data, file_name, sme_id, password, expected_type, ocr, vlm, budget, uploaded_at, start) -> ProcessResult:
@@ -173,7 +150,7 @@ def _process(data, file_name, sme_id, password, expected_type, ocr, vlm, budget,
     if expected_type and usable and all(e.document_type != expected_type for e in usable):
         found = ", ".join(sorted({e.document_type.value.replace("_", " ") for e in usable}))
         result.warnings.append(f"You uploaded this as {expected_type.value.replace('_', ' ')}, but it looks like: {found}. We used what it is.")
-    result.bureau = _self_provided_bureau(result.extractions)
+    result.bureau = self_declared_bureau_score(result.envelopes)
     if result.bureau is not None:
         result.warnings.append("bureau_report: the score comes from a report you uploaded, so it is unverified; the lender will pull its own.")
         for part in result.skipped:
@@ -181,7 +158,7 @@ def _process(data, file_name, sme_id, password, expected_type, ocr, vlm, budget,
                 part.reason = f"Credit report: we use its score ({result.bureau.value}) as self-declared; the lender checks its own."
     if not result.envelopes and not result.extractions:
         result.status = "nothing_recognised"
-        result.message = "We could not recognise any supported document in this file. Upload a PAN, Aadhaar, GST certificate, GSTR-3B, Udyam, ITR-V or bank statement."
+        result.message = "We could not recognise a supported document in this file. Check the document checklist and try another copy."
     result.vlm_requests_used = budget.used - start
     return result
 

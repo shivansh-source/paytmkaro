@@ -84,10 +84,11 @@ def test_oversized_upload_is_reported(monkeypatch):
     assert result.status == "too_large" and result.message
 
 
-def test_types_without_an_envelope_slot_come_back_as_extractions():
+def test_settlement_report_comes_back_as_an_envelope():
     result = run("settlement_report.csv")
-    assert result.status == "ok" and result.envelopes == []
-    assert [x.document_type for x in result.extractions] == [DT.SETTLEMENT_REPORT]
+    assert result.status == "ok" and len(result.envelopes) == 1
+    assert result.envelopes[0].document_type.value == "settlement_report"
+    assert result.extractions == []
 
 
 def test_unrecognised_file_says_so():

@@ -136,6 +136,97 @@
           ],
           "default": null,
           "title": "As Of"
+        },
+        "cmr_rank": {
+          "anyOf": [
+            {
+              "maximum": 10,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cmr Rank"
+        },
+        "max_dpd_24m": {
+          "anyOf": [
+            {
+              "maximum": 999,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Dpd 24M"
+        },
+        "enquiries_90d": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Enquiries 90D"
+        },
+        "written_off_or_settled": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Written Off Or Settled"
+        },
+        "suit_filed_or_wilful_default": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suit Filed Or Wilful Default"
+        },
+        "active_accounts": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Active Accounts"
+        },
+        "overdue_amount": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Overdue Amount"
         }
       },
       "required": [
@@ -364,7 +455,11 @@
         "gstr3b",
         "bank_statement",
         "udyam",
-        "itr_v"
+        "itr_v",
+        "bureau_report",
+        "financial_statements",
+        "sanction_letter",
+        "settlement_report"
       ],
       "title": "DocumentType",
       "type": "string"
@@ -854,10 +949,11 @@
   "additionalProperties": false,
   "properties": {
     "schema_version": {
-      "default": "1.1",
+      "default": "1.2",
       "enum": [
         "1.0",
-        "1.1"
+        "1.1",
+        "1.2"
       ],
       "title": "Schema Version",
       "type": "string"
