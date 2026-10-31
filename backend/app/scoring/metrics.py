@@ -39,6 +39,8 @@ def compute_metrics(docs: DocumentSet) -> CashflowMetrics:
         txns = sorted(bank.transactions, key=lambda t: t.date)
         start = _v(bank.period_from) or txns[0].date
         end = _v(bank.period_to) or txns[-1].date
+        if end < start:  # misread header dates (validation fails the document); the rows are the better guide
+            start, end = txns[0].date, txns[-1].date
         months = month_range(month_key(start), month_key(end))
         ev = _ev(bank_env, "data.transactions")
 

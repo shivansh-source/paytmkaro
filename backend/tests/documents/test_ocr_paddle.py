@@ -88,3 +88,15 @@ def test_scanned_pdf_page(engine):
     assert doc.status is LoadStatus.OK
     assert doc.pages[0].text_source is TextSource.OCR
     assert "REG-06" in doc.pages[0].text.replace(" ", "")
+
+
+@real_ocr
+def test_aadhaar_photo_pasted_into_a_text_pdf(engine):
+    doc = timed_load((FIXTURES / "letter_with_aadhaar_photo.pdf").read_bytes(), "letter_with_aadhaar_photo.pdf", engine)
+    page = doc.pages[0]
+    assert page.text_source is TextSource.NATIVE and "term loan" in page.text
+    assert f"XXXX XXXX {AADHAAR[-4:]}" in page.text
+    assert page.aadhaar_verhoeff_valid == [True]
+    assert AADHAAR[:8] not in doc.model_dump_json()
+    reread = " ".join(line.text for line in engine.recognize(page.image_png)).replace(" ", "")
+    assert AADHAAR[:8] not in reread  # the pixels no longer show the number either

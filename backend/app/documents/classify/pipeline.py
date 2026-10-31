@@ -16,11 +16,17 @@ from app.documents.models import (
 from app.documents.ports import VlmClient
 
 
-def classify(document: LoadedDocument, *, vlm: VlmClient | None = None) -> ClassificationResult:
+def classify(
+    document: LoadedDocument, *, vlm: VlmClient | None = None, budget: object | None = None
+) -> ClassificationResult:
     """Label every page, group consecutive pages into segments, pick the dominant type.
 
     The VLM (if given) is asked only about pages still unknown after rules and context,
     and only for pages that have an image. Its failures never change the rules result.
+
+    `budget`: optional shared VLM request pool (duck-typed `spend() -> bool`, optional
+    `drain()`; see app.documents.vlm.budget.VlmBudget) so one upload spends one pool across
+    classify and extract. Without it, config.VLM_MAX_REQUESTS_PER_DOCUMENT applies.
     """
     if document.status is not LoadStatus.OK:
         return ClassificationResult(
@@ -39,7 +45,7 @@ def classify(document: LoadedDocument, *, vlm: VlmClient | None = None) -> Class
     warnings: list[str] = []
     if vlm is not None:
         images = {p.index: p.image_png for p in document.pages if p.image_png}
-        requests, warnings = vlm_fallback(decisions, scores, images, vlm)
+        requests, warnings = vlm_fallback(decisions, scores, images, vlm, budget)
         if requests:
             fill_from_context(decisions, scores)  # VLM labels may now bridge remaining gaps
 

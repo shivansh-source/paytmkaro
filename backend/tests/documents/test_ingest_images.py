@@ -165,3 +165,56 @@ def test_odd_spacing_in_ocr_text_is_masked():
     ]
     doc = load_document(png(Image.new("RGB", (400, 120), "white")), "card.png", ocr=FakeOcr(lines))
     assert doc.pages[0].text == f"XXXX XXXX {c}\nXXXX XXXX {c}"
+
+
+# ---------- Verhoeff flag: checked on the full number, only the boolean is kept ----------
+
+
+def off_by_one(number: str) -> str:
+    return number[:-1] + str((int(number[-1]) + 1) % 10)
+
+
+def card_png() -> bytes:
+    return png(Image.new("RGB", (900, 200), "white"))
+
+
+def test_verhoeff_flag_for_valid_and_invalid_numbers_and_none():
+    bad = off_by_one(AADHAAR)
+    assert bad != AADHAAR and not verhoeff_valid(bad)
+    for number, expected in ((AADHAAR, [True]), (bad, [False])):
+        grouped = f"{number[:4]} {number[4:8]} {number[8:]}"
+        line = OcrLine(text=f"Aadhaar {grouped}", confidence=0.9, bbox=(0, 0, 440, 40))
+        page = load_document(card_png(), "a.png", ocr=FakeOcr([line])).pages[0]
+        assert page.aadhaar_verhoeff_valid == expected
+    plain = OcrLine(text="Permanent Account Number", confidence=0.9, bbox=(0, 0, 440, 40))
+    assert load_document(card_png(), "a.png", ocr=FakeOcr([plain])).pages[0].aadhaar_verhoeff_valid == []
+
+
+def test_verhoeff_flag_for_a_number_split_over_ocr_boxes_and_two_numbers():
+    a, b, c = AADHAAR[:4], AADHAAR[4:8], AADHAAR[8:]
+    lines = [
+        OcrLine(text=a, confidence=0.9, bbox=(0, 0, 80, 40)),
+        OcrLine(text=b, confidence=0.9, bbox=(140, 0, 220, 40)),
+        OcrLine(text=c, confidence=0.9, bbox=(280, 0, 360, 40)),
+        OcrLine(text=f"{off_by_one(AADHAAR)[:4]} {off_by_one(AADHAAR)[4:8]} {off_by_one(AADHAAR)[8:]}", confidence=0.9, bbox=(0, 100, 300, 140)),
+    ]
+    doc = load_document(card_png(), "a.png", ocr=FakeOcr(lines))
+    assert doc.pages[0].aadhaar_verhoeff_valid == [True, False]
+    assert AADHAAR[:8] not in doc.model_dump_json()
+
+
+def test_verhoeff_flag_on_native_text_and_split_table_cells():
+    text = load_document(f"Aadhaar: {AADHAAR[:4]} {AADHAAR[4:8]} {AADHAAR[8:]}".encode(), "n.txt").pages[0]
+    assert text.aadhaar_verhoeff_valid == [True]
+    # A number spread over three spreadsheet cells: masked in the text AND in the table.
+    csv = f"name,a,b,c\nR. Kumar,{AADHAAR[:4]},{AADHAAR[4:8]},{AADHAAR[8:]}\nAadhaar,x,y,z\n".encode()
+    doc = load_document(csv, "k.csv")
+    assert doc.pages[0].tables[0][1] == ["R. Kumar", "XXXX", "XXXX", AADHAAR[8:]]
+    assert doc.pages[0].aadhaar_verhoeff_valid == [True]
+    assert AADHAAR[:8] not in doc.model_dump_json()
+
+
+def test_verhoeff_flag_on_text_layer_pdf():
+    doc = load_document((FIXTURES / "e_aadhaar_encrypted.pdf").read_bytes(), "e.pdf", password="KUMA1990")
+    assert doc.pages[0].aadhaar_verhoeff_valid == [True]
+    assert AADHAAR[:8] not in doc.model_dump_json()

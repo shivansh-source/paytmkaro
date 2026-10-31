@@ -23,6 +23,13 @@ from app.documents.classify.text import PageText, fold, squash, token_regex
 from app.documents.models import DocumentType as T
 
 
+def _guarded_regex(token: str) -> re.Pattern[str]:
+    t = re.escape(token)
+    bare = rf"(?<![A-Za-z0-9_.,/\-]){t}(?![A-Za-z0-9_/\-]|[.,]\d)"  # UPPER-case standalone token
+    cell = rf"(?:^|[|\t])[ ]*(?i:{t})[ ]*(?:[:|\t]|$)"  # or a header / label cell, any case
+    return re.compile(f"{bare}|{cell}", re.MULTILINE)
+
+
 @dataclass(frozen=True)
 class Keyword:
     doc_type: T
@@ -33,13 +40,20 @@ class Keyword:
     token: bool = False
     # Form codes ("GSTR-3B", "REG-06") differ by one or two characters, so no fuzzy match.
     fuzzy: bool = True
+    # Short acronyms (CMR, DPD, MID, TID, UTR): matched on the unfolded text, so OCR digit
+    # folding can't create them, and only as a standalone upper-case token (not inside a
+    # word, a hyphenated/slashed code or an amount) or as a column header/label cell.
+    guarded: bool = False
     _compiled: tuple[tuple[str, re.Pattern[str] | None], ...] = field(default=(), repr=False, compare=False)
 
     def __post_init__(self) -> None:
         compiled = []
         for v in self.variants:
             sq = squash(fold(v))
-            compiled.append((sq, token_regex(v) if self.token or len(sq) < 6 else None))
+            if self.guarded:
+                compiled.append((sq, _guarded_regex(v)))
+            else:
+                compiled.append((sq, token_regex(v) if self.token or len(sq) < 6 else None))
         object.__setattr__(self, "_compiled", tuple(compiled))
         if not self.label:
             object.__setattr__(self, "label", self.variants[0])
@@ -48,7 +62,10 @@ class Keyword:
         """Best (quality, variant): quality 1.0 exact, the fuzzy ratio, or 0."""
         best, which = 0.0, self.label
         for variant, (sq, rx) in zip(self.variants, self._compiled, strict=True):
-            q = (1.0 if rx.search(page.folded) else 0.0) if rx else page.find(sq, fuzzy=self.fuzzy)
+            if self.guarded:
+                q = 1.0 if rx.search(page.raw) else 0.0
+            else:
+                q = (1.0 if rx.search(page.folded) else 0.0) if rx else page.find(sq, fuzzy=self.fuzzy)
             if q > best:
                 best, which = q, variant
             if best == 1.0:
@@ -56,8 +73,10 @@ class Keyword:
         return best, which
 
 
-def K(doc_type: T, weight: float, *variants: str, token: bool = False, fuzzy: bool = True) -> Keyword:
-    return Keyword(doc_type, weight, variants, token=token, fuzzy=fuzzy)
+def K(
+    doc_type: T, weight: float, *variants: str, token: bool = False, fuzzy: bool = True, guarded: bool = False
+) -> Keyword:
+    return Keyword(doc_type, weight, variants, token=token, fuzzy=fuzzy, guarded=guarded)
 
 
 KEYWORDS: list[Keyword] = [
@@ -148,12 +167,12 @@ KEYWORDS: list[Keyword] = [
     K(T.BUREAU_REPORT, 5, "CIBIL Score", "CIBIL Rank", "CIBIL MSME Rank", "MSME Rank", "क्रेडिट स्कोर"),
     K(T.BUREAU_REPORT, 3, "CIBIL", "TransUnion", "Trans Union", "Experian", "Equifax", token=True),
     K(T.BUREAU_REPORT, 4, "CRIF High Mark", "CRIF Highmark"),
-    K(T.BUREAU_REPORT, 4, "CMR", token=True),
+    K(T.BUREAU_REPORT, 4, "CMR", guarded=True),
     K(T.BUREAU_REPORT, 3, "Control Number"),
     K(T.BUREAU_REPORT, 3, "Enquiry Information", "Inquiry Information"),
     K(T.BUREAU_REPORT, 2, "Account Information"),
     K(T.BUREAU_REPORT, 3, "Days Past Due"),
-    K(T.BUREAU_REPORT, 2, "DPD", token=True),
+    K(T.BUREAU_REPORT, 2, "DPD", guarded=True),
     K(T.BUREAU_REPORT, 2, "Written-off", "Written off", "Suit-filed", "Suit filed", "Wilful Default"),
     K(T.BUREAU_REPORT, 2, "Credit Facility", "Credit Facilities"),
     K(T.BUREAU_REPORT, 1.5, "Date Reported", "Date Opened", "Current Balance", "Amount Overdue"),
@@ -203,11 +222,38 @@ KEYWORDS: list[Keyword] = [
     K(T.SETTLEMENT_REPORT, 2, "Payout", token=True),
     K(T.SETTLEMENT_REPORT, 3, "Merchant ID", "Merchant Id"),
     K(T.SETTLEMENT_REPORT, 3, "Terminal ID", "Terminal Id"),
-    K(T.SETTLEMENT_REPORT, 1.5, "MID", "TID", "UTR", token=True),
+    K(T.SETTLEMENT_REPORT, 1.5, "MID", "TID", "UTR", guarded=True),
     K(T.SETTLEMENT_REPORT, 2.5, "MDR", token=True),
     K(T.SETTLEMENT_REPORT, 2, "Gross Amount"),
     K(T.SETTLEMENT_REPORT, 1.5, "Payment Mode", "Transaction Fee", "Commission"),
     K(T.SETTLEMENT_REPORT, 0.5, "Razorpay", "Paytm", "PhonePe", "Pine Labs", "Cashfree", "PayU", token=True),
+    # ---- Hindi variants for the later document types ----
+    K(T.BUREAU_REPORT, 6, "क्रेडिट सूचना रिपोर्ट", "क्रेडिट रिपोर्ट"),
+    K(T.BUREAU_REPORT, 5, "सिबिल स्कोर", "सिबिल रैंक"),
+    K(T.BUREAU_REPORT, 3, "सिबिल", "ट्रांसयूनियन", "एक्सपेरियन", "इक्विफैक्स"),
+    K(T.BUREAU_REPORT, 3, "नियंत्रण संख्या", "पूछताछ की जानकारी"),
+    K(T.BUREAU_REPORT, 2, "खाते की जानकारी", "बट्टे खाते"),
+    K(T.UDYAM_CERTIFICATE, 3, "उद्यम पंजीकरण", "उद्यम पंजीयन"),
+    K(T.UDYAM_CERTIFICATE, 4, "सूक्ष्म, लघु और मध्यम उद्यम मंत्रालय", "एमएसएमई मंत्रालय"),
+    K(T.UDYAM_CERTIFICATE, 3, "उद्यम का प्रकार"),
+    K(T.UDYAM_CERTIFICATE, 2.5, "उद्यम का नाम", "इकाई का नाम"),
+    K(T.UDYAM_CERTIFICATE, 2.5, "उत्पादन या व्यवसाय शुरू होने की तिथि", "निगमन की तिथि"),
+    K(T.FINANCIAL_STATEMENTS, 5, "तुलनपत्र", "स्वतंत्र लेखा परीक्षक की रिपोर्ट", "लेखा परीक्षक की रिपोर्ट"),
+    K(T.FINANCIAL_STATEMENTS, 4, "लाभ और हानि खाता", "लाभ-हानि खाता", "लाभ व हानि खाता"),
+    K(T.FINANCIAL_STATEMENTS, 2, "चार्टर्ड अकाउंटेंट", "चार्टर्ड एकाउंटेंट"),
+    K(T.FINANCIAL_STATEMENTS, 3, "विविध देनदार", "विविध लेनदार", "लेखों पर टिप्पणियाँ"),
+    K(T.FINANCIAL_STATEMENTS, 2.5, "शेयर पूंजी", "पूंजी खाता"),
+    K(T.FINANCIAL_STATEMENTS, 2, "कुल संपत्ति", "कुल परिसंपत्तियाँ", "कुल देनदारियाँ"),
+    K(T.SANCTION_LETTER, 6, "स्वीकृति पत्र", "मंजूरी पत्र", "स्वीकृत पत्र"),
+    K(T.SANCTION_LETTER, 5, "मुख्य तथ्य विवरण"),
+    K(T.SANCTION_LETTER, 4, "स्वीकृत राशि", "मंजूर राशि"),
+    K(T.SANCTION_LETTER, 2, "ब्याज दर", "प्रोसेसिंग शुल्क", "प्रसंस्करण शुल्क"),
+    K(T.SANCTION_LETTER, 3, "वार्षिक प्रतिशत दर", "कूलिंग-ऑफ अवधि", "कूलिंग ऑफ अवधि"),
+    K(T.SANCTION_LETTER, 1, "ईएमआई", token=True),
+    K(T.SETTLEMENT_REPORT, 6, "निपटान रिपोर्ट", "निपटान विवरण"),
+    K(T.SETTLEMENT_REPORT, 3, "निपटान राशि", "निपटान की तारीख", "शुद्ध निपटान"),
+    K(T.SETTLEMENT_REPORT, 3, "व्यापारी आईडी", "मर्चेंट आईडी", "टर्मिनल आईडी"),
+    K(T.SETTLEMENT_REPORT, 2, "सकल राशि", "शुद्ध राशि"),
     # ---- look-alikes we don't support: evidence against ----
     # Udyog Aadhaar (the old MSME memorandum) is unsupported; Udyam (its successor) is supported.
     K(T.GST_CERTIFICATE, -4, "Udyog Aadhaar", "Udyam Registration", "उद्यम पंजीकरण"),
@@ -328,7 +374,7 @@ _SETTLE_RX = [
 
 
 def _is_settlement_header(line: str) -> bool:
-    folded = fold(line)
+    folded = fold(line.replace("_", " "))
     return sum(1 for rx in _SETTLE_RX if rx.search(folded)) >= 4
 
 
@@ -361,7 +407,7 @@ def _pans(text: str) -> list[str]:
 
 
 def _is_header(line: str) -> bool:
-    folded = fold(line)
+    folded = fold(line.replace("_", " "))
     return sum(1 for rx in _HEADER_RX if rx.search(folded)) >= 3
 
 

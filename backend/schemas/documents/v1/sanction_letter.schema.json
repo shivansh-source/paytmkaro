@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Loan Sanction Letter Extraction Schema v1",
+  "type": "object",
+  "required": [
+    "lender_name",
+    "facility_type",
+    "sanctioned_amount"
+  ],
+  "properties": {
+    "lender_name": {
+      "maxLength": 160,
+      "minLength": 2,
+      "pattern": "^[A-Za-z0-9\\u0900-\\u0DFF][A-Za-z0-9\\u0900-\\u0DFF .,'&()/-]*$",
+      "type": "string"
+    },
+    "facility_type": {
+      "enum": [
+        "term_loan",
+        "overdraft",
+        "cash_credit",
+        "working_capital",
+        "other"
+      ],
+      "type": "string"
+    },
+    "sanctioned_amount": {
+      "minimum": 0,
+      "type": "number"
+    },
+    "interest_rate_pct": {
+      "maximum": 100,
+      "minimum": 0,
+      "type": "number"
+    },
+    "rate_type": {
+      "enum": [
+        "fixed",
+        "floating"
+      ],
+      "type": "string"
+    },
+    "apr_pct": {
+      "maximum": 100,
+      "minimum": 0,
+      "type": "number"
+    },
+    "tenure_months": {
+      "exclusiveMinimum": 0,
+      "maximum": 600,
+      "type": "integer"
+    },
+    "emi_amount": {
+      "minimum": 0,
+      "type": "number"
+    },
+    "emi_recomputed": {
+      "minimum": 0,
+      "type": "number"
+    },
+    "processing_fee": {
+      "minimum": 0,
+      "type": "number"
+    },
+    "processing_fee_pct": {
+      "maximum": 100,
+      "minimum": 0,
+      "type": "number"
+    },
+    "security": {
+      "maxLength": 300,
+      "minLength": 2,
+      "type": "string"
+    },
+    "fd_lien_or_margin": {
+      "type": "boolean"
+    },
+    "sanction_date": {
+      "format": "date",
+      "type": "string"
+    },
+    "validity_date": {
+      "format": "date",
+      "type": "string"
+    },
+    "cooling_off_days": {
+      "maximum": 90,
+      "minimum": 0,
+      "type": "integer"
+    }
+  }
+}

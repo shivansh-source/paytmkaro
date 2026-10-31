@@ -210,7 +210,14 @@ def check_bank_statement(d: BankStatement, as_of: date) -> list[Check]:
                          "Transactions are out of date order", ["data.transactions"], warn_only=True))
 
     start, end = _value(d.period_from), _value(d.period_to)
-    if start and end:
+    if start and end and end < start:
+        # A misread header date; month_range would be empty, so say so instead of checking months.
+        checks.append(
+            _check("bank.period", False, "Statement period is valid",
+                   f"Statement period runs backwards ({start:%d %b %Y} to {end:%d %b %Y}): check the dates",
+                   ["data.period_from", "data.period_to"])
+        )
+    elif start and end:
         expected = month_range(month_key(start), month_key(end))
         missing = _missing_months({month_key(t.date) for t in d.transactions}, expected)
         checks.append(

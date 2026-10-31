@@ -1,0 +1,198 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Financial Statements Extraction Schema v1",
+  "type": "object",
+  "required": [
+    "financial_year",
+    "revenue",
+    "profit_after_tax",
+    "total_assets"
+  ],
+  "properties": {
+    "audit_status": {
+      "enum": [
+        "audited",
+        "ca_certified",
+        "provisional",
+        "unknown"
+      ],
+      "type": "string"
+    },
+    "financial_year": {
+      "pattern": "^[0-9]{4}-[0-9]{2}$",
+      "type": "string"
+    },
+    "prior_financial_year": {
+      "pattern": "^[0-9]{4}-[0-9]{2}$",
+      "type": "string"
+    },
+    "auditor_name": {
+      "maxLength": 100,
+      "minLength": 2,
+      "pattern": "^[A-Za-z\\u0900-\\u0DFF][A-Za-z\\u0900-\\u0DFF .'-]*$",
+      "type": "string"
+    },
+    "auditor_firm": {
+      "maxLength": 160,
+      "minLength": 2,
+      "pattern": "^[A-Za-z0-9\\u0900-\\u0DFF][A-Za-z0-9\\u0900-\\u0DFF .,'&()/-]*$",
+      "type": "string"
+    },
+    "udin": {
+      "pattern": "^[0-9A-Z]{18}$",
+      "type": "string"
+    },
+    "unit": {
+      "enum": [
+        "units",
+        "thousands",
+        "lakhs",
+        "millions",
+        "crores"
+      ],
+      "type": "string"
+    },
+    "unit_scale": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "current_ratio": {
+      "type": "number"
+    },
+    "debt_to_equity": {
+      "type": "number"
+    },
+    "net_margin": {
+      "type": "number"
+    },
+    "dscr": {
+      "type": "number"
+    },
+    "revenue": {
+      "type": "number"
+    },
+    "prior_revenue": {
+      "type": "number"
+    },
+    "other_income": {
+      "type": "number"
+    },
+    "prior_other_income": {
+      "type": "number"
+    },
+    "total_expenses": {
+      "type": "number"
+    },
+    "prior_total_expenses": {
+      "type": "number"
+    },
+    "ebitda": {
+      "type": "number"
+    },
+    "prior_ebitda": {
+      "type": "number"
+    },
+    "depreciation": {
+      "type": "number"
+    },
+    "prior_depreciation": {
+      "type": "number"
+    },
+    "interest_expense": {
+      "type": "number"
+    },
+    "prior_interest_expense": {
+      "type": "number"
+    },
+    "profit_before_tax": {
+      "type": "number"
+    },
+    "prior_profit_before_tax": {
+      "type": "number"
+    },
+    "profit_after_tax": {
+      "type": "number"
+    },
+    "prior_profit_after_tax": {
+      "type": "number"
+    },
+    "total_assets": {
+      "type": "number"
+    },
+    "prior_total_assets": {
+      "type": "number"
+    },
+    "current_assets": {
+      "type": "number"
+    },
+    "prior_current_assets": {
+      "type": "number"
+    },
+    "current_liabilities": {
+      "type": "number"
+    },
+    "prior_current_liabilities": {
+      "type": "number"
+    },
+    "total_liabilities": {
+      "type": "number"
+    },
+    "prior_total_liabilities": {
+      "type": "number"
+    },
+    "total_equity_and_liabilities": {
+      "type": "number"
+    },
+    "prior_total_equity_and_liabilities": {
+      "type": "number"
+    },
+    "net_worth": {
+      "type": "number"
+    },
+    "prior_net_worth": {
+      "type": "number"
+    },
+    "long_term_borrowings": {
+      "type": "number"
+    },
+    "prior_long_term_borrowings": {
+      "type": "number"
+    },
+    "short_term_borrowings": {
+      "type": "number"
+    },
+    "prior_short_term_borrowings": {
+      "type": "number"
+    },
+    "trade_receivables": {
+      "type": "number"
+    },
+    "prior_trade_receivables": {
+      "type": "number"
+    },
+    "trade_payables": {
+      "type": "number"
+    },
+    "prior_trade_payables": {
+      "type": "number"
+    },
+    "inventory": {
+      "type": "number"
+    },
+    "prior_inventory": {
+      "type": "number"
+    },
+    "cash": {
+      "type": "number"
+    },
+    "prior_cash": {
+      "type": "number"
+    },
+    "principal_repayments": {
+      "type": "number"
+    },
+    "prior_principal_repayments": {
+      "type": "number"
+    }
+  }
+}

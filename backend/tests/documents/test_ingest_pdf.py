@@ -132,3 +132,50 @@ def test_stamps_and_scanner_footers_are_not_a_text_layer():
     assert not has_real_text("Scanned with CamScanner\nSAMPLE SPECIMEN")
     assert not has_real_text("Scanned by TapScanner on 12/04/2025 10:31")
     assert has_real_text("Form GST REG-06 Registration Certificate")
+
+
+# ---------- Aadhaar photo pasted into a text-layer PDF ----------
+
+
+def _pixel(image_png: bytes, x: int, y: int) -> int:
+    return Image.open(io.BytesIO(image_png)).convert("L").getpixel((x, y))
+
+
+def test_aadhaar_photo_inside_a_text_pdf_is_ocrd_masked_and_redacted():
+    number = "2345 6789 0124"
+    in_photo = OcrLine(text=f"Aadhaar {number}", confidence=0.9, bbox=(300, 800, 1100, 860))
+    in_text = OcrLine(text="Respected Sir", confidence=0.9, bbox=(100, 150, 500, 190))
+    ocr = FakeOcr([in_photo, in_text])
+    doc = load_document(read("letter_with_aadhaar_photo.pdf"), "letter.pdf", ocr=ocr)
+    [page] = doc.pages
+    assert ocr.calls == 1
+    assert page.text_source is TextSource.NATIVE
+    assert "Application for a working capital term loan" in page.text  # native text kept
+    assert page.text.endswith("Aadhaar XXXX XXXX 0124")  # text found inside the picture is appended
+    assert page.text.count("Respected Sir") == 1  # but the text layer is not duplicated from OCR
+    assert [l.text for l in page.ocr_lines] == ["Aadhaar XXXX XXXX 0124"]
+    assert "2345 6789" not in doc.model_dump_json()
+    assert page.aadhaar_verhoeff_valid == [True]  # 2345 6789 0124 passes Verhoeff
+    assert _pixel(page.image_png, 682, 830) == 0  # hidden digits blacked out on the page render
+
+
+def test_text_pdf_with_a_small_logo_is_not_ocrd():
+    ocr = FakeOcr()
+    load_document(read("gst_reg06.pdf"), "gst.pdf", ocr=ocr)
+    assert ocr.calls == 0
+
+
+def test_embedded_photo_without_ocr_warns():
+    doc = load_document(read("letter_with_aadhaar_photo.pdf"), "letter.pdf")
+    assert doc.status is LoadStatus.OK
+    assert any("large images" in w and "Aadhaar" in w for w in doc.warnings)
+
+
+def test_embedded_photo_ocr_failure_is_a_warning():
+    class Broken:
+        def recognize(self, image_png):
+            raise RuntimeError("boom")
+
+    doc = load_document(read("letter_with_aadhaar_photo.pdf"), "letter.pdf", ocr=Broken())
+    assert doc.status is LoadStatus.OK and any("OCR error" in w for w in doc.warnings)
+    assert doc.pages[0].text_source is TextSource.NATIVE
