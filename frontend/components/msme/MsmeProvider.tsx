@@ -56,7 +56,8 @@ interface MsmeContext extends MsmeState {
   reset: () => void;
 }
 
-const KEY = "creditsetu.msme";
+// One saved dashboard per account (mobile number), so a new account on the same browser starts clean.
+const storageKey = () => `creditsetu.msme.${(readSession()?.mobile ?? "").replace(/\D/g, "") || "demo"}`;
 const INITIAL: MsmeState = {
   questionnaire: null,
   sampleLabel: null,
@@ -91,12 +92,14 @@ export function MsmeProvider({ children }: { children: ReactNode }) {
   // Uploaded envelopes, updated synchronously so uploads that finish together don't overwrite each other.
   const uploaded = useRef<Envelope[]>([]);
   const assessSeq = useRef(0);
+  const key = useRef(""); // localStorage key for the signed-in account, set on mount
   const uploadedBureau = useRef<AssessBody["bureau"]>(null); // score from an uploaded bureau report
   const files = useRef<Partial<Record<DocumentType, File>>>({}); // kept in memory for a password retry
 
   useEffect(() => {
     try {
-      const saved = window.localStorage.getItem(KEY);
+      key.current = storageKey();
+      const saved = window.localStorage.getItem(key.current);
       if (saved) {
         const restored: MsmeState = { ...INITIAL, ...JSON.parse(saved) };
         // A refresh mid-read loses the request: show those slots as needing the file again.
@@ -119,7 +122,7 @@ export function MsmeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (ready) window.localStorage.setItem(KEY, JSON.stringify(state));
+    if (ready) window.localStorage.setItem(key.current, JSON.stringify(state));
   }, [state, ready]);
 
   const run = useCallback(async (task: () => Promise<void>) => {

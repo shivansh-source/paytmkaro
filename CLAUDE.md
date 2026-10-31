@@ -166,11 +166,14 @@ started (stopping a background `npx next start` can leave an orphaned `node` hol
 Flow: landing → `/register` (role choice; `?role=lender|msme` pre-selects) → details → mock OTP
 (`123456`, shown on screen) → MSMEs land on `/msme/start` (questionnaire), lenders on `/lender` (lenders
 pick their institution from `/v1/lenders`, so the inbox knows whose applications to show). Session in
-`localStorage` (`lib/session.ts`); no real auth for the hackathon. Sign-out does a full page load
+`localStorage` (`lib/session.ts`); no real auth for the hackathon. Opening `/register` while signed in
+shows "You're signed in" with **Continue** or **Use a different account** (never a silent redirect). MSME
+dashboard state is saved per account (`creditsetu.msme.<mobile>`), so a new account starts clean and an
+old one gets its work back on the same browser. Sign-out does a full page load
 (`window.location.assign("/")`), because clearing data makes page guards redirect and race `router.push`.
 
 MSME screens (all client components inside `MsmeProvider`, which persists assessment, request, sort and
-matches to `localStorage` so a refresh mid-demo is safe):
+matches to `localStorage`, per account, so a refresh mid-demo is safe):
 0. `/msme/start` (sidebar step 1): **questionnaire as a scripted chat**, skippable ("Skip to documents").
    7 questions: sector; business type; start year; yearly sales band; loan amount + tenure + purpose;
    existing EMIs; EMI/cheque bounces in 6 months; which of GST / Udyam / ITR / credit score they have

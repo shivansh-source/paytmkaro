@@ -6,7 +6,7 @@ import { useEffect, useState, type FormEvent } from "react";
 
 import { BridgeMark } from "../BridgeMark";
 import { api } from "../../lib/api";
-import { DEMO_OTP, homeFor, readSession, writeSession, type Role } from "../../lib/session";
+import { DEMO_OTP, clearSession, homeFor, readSession, writeSession, type Role, type Session } from "../../lib/session";
 
 const ROLES: { role: Role; title: string; body: string }[] = [
   { role: "msme", title: "I run a business", body: "Get lender-ready, see every lender you qualify for, and what to fix for the rest." },
@@ -23,6 +23,7 @@ export function RegisterForm({ initialRole }: { initialRole: Role | null }) {
   const [otp, setOtp] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [institutions, setInstitutions] = useState<string[] | null>(null);
+  const [current, setCurrent] = useState<Session | null>(null); // someone already signed in on this browser
 
   // Lenders pick their institution, so the inbox knows whose applications to show.
   useEffect(() => {
@@ -33,11 +34,10 @@ export function RegisterForm({ initialRole }: { initialRole: Role | null }) {
       .catch(() => setInstitutions([]));
   }, [role, institutions]);
 
-  // Already signed in with this role? Go straight to the workspace.
+  // Already signed in? Offer to continue, or to switch to another account (never a silent redirect).
   useEffect(() => {
-    const session = readSession();
-    if (session && (!initialRole || session.role === initialRole)) router.replace(homeFor(session.role));
-  }, [initialRole, router]);
+    setCurrent(readSession());
+  }, []);
 
   const sendOtp = (e: FormEvent) => {
     e.preventDefault();
@@ -64,7 +64,28 @@ export function RegisterForm({ initialRole }: { initialRole: Role | null }) {
       <div className="auth-card fade-in">
         <p className="eyebrow">Sign in or create an account</p>
 
-        {!role ? (
+        {current ? (
+          <div className="auth-form">
+            <h1 className="auth-title">You're signed in</h1>
+            <p className="muted">
+              As {current.name} ({current.organisation}), {current.role === "msme" ? "business" : "lender"} account, +91{" "}
+              {current.mobile.slice(0, 5)} {current.mobile.slice(5)}.
+            </p>
+            <button type="button" className="btn btn-solid" onClick={() => router.push(homeFor(current.role))}>
+              Continue to your dashboard <span aria-hidden="true">→</span>
+            </button>
+            <button
+              type="button"
+              className="link-button"
+              onClick={() => {
+                clearSession(); // that account's saved work stays, under its own mobile number
+                setCurrent(null);
+              }}
+            >
+              Use a different account
+            </button>
+          </div>
+        ) : !role ? (
           <>
             <h1 className="auth-title">Who are you?</h1>
             <div className="role-grid">
