@@ -138,14 +138,14 @@ def test_think_blocks_and_fences_are_stripped():
 
 def test_missing_key_fails_clearly_and_default_is_none(monkeypatch):
     monkeypatch.setattr(config, "GROQ_API_KEY", None)
+    monkeypatch.setattr(config, "GROQ_API_KEYS", [])
     with pytest.raises(VlmError, match="GROQ_API_KEY"):
         GroqVlmClient()
     assert get_default_vlm() is None
 
     monkeypatch.setattr(config, "GROQ_API_KEY", KEY)
-    default = get_default_vlm()
-    assert isinstance(default, GroqVlmClient)
-    default.close()
+    monkeypatch.setattr(config, "GROQ_API_KEYS", [KEY])
+    assert len(get_default_vlm()) == 1
 
 
 @pytest.mark.skipif(os.getenv("RUN_VLM_TESTS") != "1" or not config.GROQ_API_KEY, reason="live Groq call: set RUN_VLM_TESTS=1 and GROQ_API_KEY")

@@ -81,6 +81,7 @@ class GroqVlmClient:
         timeout: float = 60.0,
         max_retries: int = 3,
         backoff: float = 1.0,
+        retry_rate_limit: bool = True,
         reasoning_effort: str | None = "none",
         reasoning_format: str | None = "hidden",
         transport: httpx.BaseTransport | None = None,
@@ -92,6 +93,8 @@ class GroqVlmClient:
         self.model = model or config.GROQ_VLM_MODEL
         self.max_retries = max_retries
         self.backoff = backoff
+        # False: a 429 raises at once (with its Retry-After) instead of sleeping, so a pool can try another key.
+        self.retry_rate_limit = retry_rate_limit
         # Groq docs (2026-10-31): qwen/qwen3.8-27b accepts reasoning_effort none|default|low|medium|high
         # (default none); JSON mode needs reasoning_format parsed|hidden ("raw" is a 400).
         self.reasoning_effort = reasoning_effort
@@ -155,6 +158,8 @@ class GroqVlmClient:
                     raise VlmError(f"Groq request failed: {type(exc).__name__}") from exc
                 self._sleep(self._wait(attempt, None))
                 continue
+            if response.status_code == 429 and not self.retry_rate_limit:
+                raise VlmBudgetExceeded("Groq rate limit (429)", retry_after=_retry_after(response))
             if response.status_code in RETRY_STATUSES:
                 last_status = response.status_code
                 if attempt < self.max_retries:
@@ -172,6 +177,13 @@ class GroqVlmClient:
         if last_status == 429:
             raise VlmBudgetExceeded(f"Groq rate limit (429) persisted after {self.max_retries} retries")
         raise VlmError(f"Groq unavailable (HTTP {last_status or 'network error'}) after {self.max_retries} retries")
+
+
+def _retry_after(response: httpx.Response) -> float | None:
+    try:
+        return float(response.headers.get("retry-after", ""))
+    except ValueError:
+        return None
 
 
 def _error_message(response: httpx.Response) -> str:

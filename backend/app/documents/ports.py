@@ -24,6 +24,10 @@ class VlmError(Exception):
 class VlmBudgetExceeded(VlmError):
     """Rate limit (429) after retries, or the per-document request budget is spent."""
 
+    def __init__(self, message: str = "", retry_after: float | None = None):
+        super().__init__(message)
+        self.retry_after = retry_after  # seconds the provider asked us to wait, when it said
+
 
 class VlmClient(Protocol):
     def complete_json(self, prompt: str, images: Sequence[bytes] = (), *, max_tokens: int = 2048) -> dict[str, Any]:

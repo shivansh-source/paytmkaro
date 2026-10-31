@@ -110,7 +110,8 @@ def _process(data, file_name, sme_id, password, expected_type, ocr, vlm, budget,
             file_name=file_name, sha256=document.sha256, status=document.status.value,
             message=document.message, warnings=document.warnings,
         )
-    classification = classify(document, vlm=vlm, budget=budget)
+    # When the SME chose the upload slot, the VLM is saved for reading fields rather than also naming the document.
+    classification = classify(document, vlm=None if expected_type else vlm, budget=budget)
     result = ProcessResult(file_name=file_name, sha256=document.sha256, status="ok", classification=classification, warnings=list(document.warnings))
     counts: dict[str, int] = {}
     segments = [(s.document_type, s.page_indexes) for s in classification.segments]
@@ -165,7 +166,7 @@ def _process(data, file_name, sme_id, password, expected_type, ocr, vlm, budget,
 
 def default_ocr() -> OcrEngine | None:
     """Local PaddleOCR when it is installed (it is heavy, ~1 GB); else None."""
-    if importlib.util.find_spec("paddleocr") is None:
+    if not config.OCR_ENABLED or importlib.util.find_spec("paddleocr") is None:
         return None
     from app.documents.ocr import get_default_ocr
 
@@ -176,7 +177,7 @@ def default_engines() -> tuple[OcrEngine | None, VlmClient | None]:
     """The engines the upload route uses. The VLM only runs alongside OCR, because OCR is what finds Aadhaar
     numbers to black out before a page image leaves the server (config.VLM_WITHOUT_OCR overrides, knowingly)."""
     ocr, vlm = default_ocr(), get_default_vlm()
-    if ocr is None and vlm is not None and not config.VLM_WITHOUT_OCR:
+    if ocr is None and vlm is not None and config.OCR_ENABLED and not config.VLM_WITHOUT_OCR:
         log.warning("PaddleOCR is not installed: the VLM is off for uploads so unredacted images never leave the server")
         vlm = None
     return ocr, vlm

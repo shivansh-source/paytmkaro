@@ -19,9 +19,29 @@ MAX_IMAGE_PIXELS = 40_000_000  # decompression-bomb guard for images
 
 # OCR: PaddleOCR, local. "hi" is the Devanagari PP-OCRv5 model, which also reads English.
 OCR_LANG = os.getenv("OCR_LANG", "hi")
+# OCR_ENABLED=0 switches PaddleOCR off for uploads (the code stays): digital files are read from their text layer
+# (PyMuPDF) and scans/photos go to the VLM. Page images then reach the VLM without Aadhaar blacking-out.
+OCR_ENABLED = os.getenv("OCR_ENABLED", "1") != "0"
 
 # VLM: Groq's OpenAI-compatible API, Qwen vision model. Fallback only (free tier is ~30 RPM / 1K RPD).
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
+
+def _groq_keys() -> list[str]:
+    """Every configured Groq key, in order, without blanks or duplicates: GROQ_API_KEYS (comma separated),
+    then GROQ_API_KEY, GROQ_API_KEY_2, GROQ_API_KEY_3 ... Each key is one worker in the VLM pool."""
+    found = [k.strip() for k in os.getenv("GROQ_API_KEYS", "").split(",")]
+    found.append(os.getenv("GROQ_API_KEY", ""))
+    found += [os.getenv(f"GROQ_API_KEY_{n}", "") for n in range(2, 11)]
+    return list(dict.fromkeys(k.strip() for k in found if k and k.strip()))
+
+
+GROQ_API_KEYS = _groq_keys()
+# Per-key limits and patience. 8,000 tokens a minute is the free-plan limit measured for the model below.
+VLM_TPM_LIMIT = int(os.getenv("VLM_TPM_LIMIT", "8000"))
+# Longest an upload will wait for a free key before it carries on without the vision model. This is what keeps
+# an upload comfortably inside the web proxy's limit (3 minutes) however busy the keys are.
+VLM_MAX_WAIT_SECONDS = float(os.getenv("VLM_MAX_WAIT_SECONDS", "15"))
 GROQ_BASE_URL = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
 GROQ_VLM_MODEL = os.getenv("GROQ_VLM_MODEL", "qwen/qwen3.8-27b")
 VLM_MAX_REQUESTS_PER_DOCUMENT = int(os.getenv("VLM_MAX_REQUESTS_PER_DOCUMENT", "3"))
