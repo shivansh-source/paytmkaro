@@ -17,7 +17,12 @@ from app.documents.privacy import mask_aadhaar_text
 # ---------- Numbers ----------
 
 _NUMBER = re.compile(r"(?<![\w.])(-?)(?:₹|rs\.?|inr)?\s*(\d{1,3}(?:,\d{2,3})+|\d+)(\.\d{1,2})?(?![\d,])", re.IGNORECASE)
-_AMOUNT_TOKEN = re.compile(r"(?<![\w/.-])-?\d{1,3}(?:,\d{2,3})*(?:\.\d{2})(?:\s?(?:cr|dr)\b)?|(?<![\w/.-])-?\d+\.\d{2}(?:\s?(?:cr|dr)\b)?", re.IGNORECASE)
+# A currency prefix may be glued to the digits ("Rs658,000.00", "INR6,58,000.00"); it is part of the token so
+# the digits after it are never read on their own (the "000.00" tail of "658,000.00" is not an amount).
+_AMOUNT_TOKEN = re.compile(
+    r"(?<![\w/.,-])(?:-?(?:₹|rs\.?|inr)\s?)?-?(?:\d{1,3}(?:,\d{2,3})*\.\d{2}|\d+\.\d{2})(?:\s?(?:cr|dr)\b)?(?!\d)",
+    re.IGNORECASE,
+)
 
 
 def parse_inr(value: object) -> float | None:
@@ -38,7 +43,8 @@ def parse_inr(value: object) -> float | None:
     if suffix:
         negative = negative or suffix.group(1).lower() == "dr"
         text = text[: suffix.start()]
-    text = re.sub(r"^(?:₹|rs\.?|inr)\s*", "", text.strip(), flags=re.IGNORECASE).replace(" ", "")
+    text = re.sub(r"\s*/-\s*$", "", text.strip())  # "Rs.6,58,000/-"
+    text = re.sub(r"^(-?)\s*(?:₹|rs\.?|inr)\s*", r"\1", text, flags=re.IGNORECASE).replace(" ", "")
     if text.startswith("-"):
         negative, text = True, text[1:]
     if not re.fullmatch(r"\d{1,3}(?:,\d{2,3})+(?:\.\d+)?|\d+(?:\.\d+)?", text):
@@ -271,20 +277,64 @@ OCR_TEXT_CONFIDENCE = 0.8  # OCR text without per-line scores
 
 
 def _ocr_rows(page: Page) -> list[Line]:
-    """Group OCR boxes into visual rows (same baseline), left to right, so 'Name' and its value
-    printed side by side become one line. Row confidence is the weakest box."""
+    """Group OCR boxes into visual rows, left to right, so 'Name' and its value printed side by side
+    become one line. A box joins a row when its centre is within half a median box height of the
+    row's, OR when it shares at least 40% of the shorter box's height with a box already in the row
+    (table cells: labels are centred in the row, values top-aligned, so their centres can be a full
+    line apart while the boxes still overlap). A box never joins a row that already has a box in the
+    same column (the second line of a wrapped value starts its own row). Row confidence is the
+    weakest box."""
     boxes = sorted(page.ocr_lines, key=lambda l: ((l.bbox[1] + l.bbox[3]) / 2, l.bbox[0]))
-    tolerance = median(max(l.bbox[3] - l.bbox[1], 1) for l in boxes) / 2
-    rows: list[list] = []
+    height = median(max(l.bbox[3] - l.bbox[1], 1) for l in boxes)
+    tolerance = height / 2
+    rows: list[list] = []  # [centre of the first box, members]
+
+    def overlaps(a, b) -> bool:
+        shorter = max(min(a.bbox[3] - a.bbox[1], b.bbox[3] - b.bbox[1]), 1)
+        return min(a.bbox[3], b.bbox[3]) - max(a.bbox[1], b.bbox[1]) >= 0.4 * shorter
+
+    def same_column(a, b) -> bool:
+        narrower = max(min(a.bbox[2] - a.bbox[0], b.bbox[2] - b.bbox[0]), 1)
+        return min(a.bbox[2], b.bbox[2]) - max(a.bbox[0], b.bbox[0]) > 0.3 * narrower
+
     for box in boxes:
         centre = (box.bbox[1] + box.bbox[3]) / 2
-        if rows and abs(centre - rows[-1][0]) <= tolerance:
-            rows[-1][1].append(box)
+        target = None
+        for row in reversed(rows[-6:]):  # only the last few rows can still be on the same line
+            near = abs(centre - row[0]) <= tolerance or any(overlaps(box, m) for m in row[1])
+            if near and not any(same_column(box, m) for m in row[1]):
+                target = row
+                break
+        if target is not None:
+            target[1].append(box)
         else:
             rows.append([centre, [box]])
+
+    # A wrapped value is stacked in its cell and its label is centred beside the stack, so the label can
+    # share a row with the stack's second line only: the first line then sits alone one row above. Pull a
+    # lone box into the next row when that row has a label to its left and the box's own column directly
+    # below it; the cell's lines then read in order after the label.
+    merged: list[list] = []
+    for row in rows:
+        if merged and len(merged[-1][1]) == 1 and len(row[1]) >= 2:
+            above = merged[-1][1][0]
+            label = min(row[1], key=lambda l: l.bbox[0])
+            below = [m for m in row[1] if m is not label and same_column(above, m) and -0.5 * height <= m.bbox[1] - above.bbox[3] <= 0.5 * height]
+            beside = label.bbox[2] <= above.bbox[0] + 0.1 * (above.bbox[2] - above.bbox[0]) and not same_column(above, label)
+            close = above.bbox[3] >= label.bbox[1] - 0.3 * height  # the stack's first line ends where the label starts
+            if below and beside and close:
+                merged.pop()
+                row[1].append(above)
+        merged.append(row)
+
     lines = []
-    for _, members in rows:
+    for _, members in merged:
         members.sort(key=lambda l: l.bbox[0])
+        # Boxes stacked in one column read top to bottom, whatever their tiny left-edge differences.
+        for i in range(len(members) - 1):
+            for j in range(i + 1, len(members)):
+                if same_column(members[i], members[j]) and members[j].bbox[1] < members[i].bbox[1]:
+                    members[i], members[j] = members[j], members[i]
         lines.append(Line("  ".join(m.text for m in members), min(m.confidence for m in members)))
     return lines
 
@@ -308,7 +358,7 @@ _DEVANAGARI = re.compile(r"[\u0900-\u097F]+")
 def clean_value(text: str) -> str:
     """Strip bilingual label noise ('/ नाम'), separators and extra spaces around a value."""
     text = _DEVANAGARI.sub(" ", text)
-    text = re.sub(r"^[\s:/|.\-–]+|[\s:/|\-–]+$", "", text)
+    text = re.sub(r"^[\s:/|.\-–'`‘’\"“”]+|[\s:/|\-–`‘’\"“”]+$", "", text)
     return " ".join(text.split())
 
 

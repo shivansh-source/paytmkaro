@@ -98,6 +98,8 @@ def read_bureau_report(view: PageView) -> PageRead:
             if t := re.search(r"(?:cibil|transunion|experian|equifax|crif)[A-Za-z ]{0,25}?score(?:\s*(?:v|version)?\s*\d(?:\.\d)?)?", line.text, I):
                 read.put("score_type", Hit(t.group(0), line.confidence))
             break
+    if "score" not in read.fields and "no_credit_history" not in read.fields:
+        read.put("score", _boxed_score(lines))
     for line in lines:
         if m := re.search(r"\bCMR\b(?:[\s-]*(?:rank|score))?", line.text):
             if v := re.search(r"(?<![\d/.])(10|[1-9])(?![\d/.])", _strip_parens(line.text[m.end():])):
@@ -116,6 +118,38 @@ def read_bureau_report(view: PageView) -> PageRead:
     read.put("enquiries_90d", _last_int(lines, re.compile(r"enquir(?:y|ies)", I), require=re.compile(r"90", I)))
     read.rows.extend(_bureau_accounts(view))
     return read
+
+
+_SCORE_ANCHOR = re.compile(r"score", I)
+_LONE_NUMBER = re.compile(r"^\W*(\d{3})\W*(?:/\s*900\W*)?$")
+_SCORE_CAPTION = re.compile(r"score|cibil|transunion|experian|equifax|crif|your|credit|bureau", I)
+
+
+def _boxed_score(lines: list[Line]) -> Hit | None:
+    """A score printed large inside a box is its own OCR box, so it is a line holding only a 3-digit
+    number, directly above or below the 'score' caption (or one captionless line away). Only a unique
+    number strictly inside 300-900 counts: the ends of a printed '300 ... 900' scale are not the score,
+    a CMR rank (1-10) has no 3 digits, and a lone number elsewhere on the page is never a candidate."""
+    found: dict[int, float] = {}
+    for i, line in enumerate(lines):
+        if not _SCORE_ANCHOR.search(line.text) or _SCORE_NOISE.search(line.text) or _LONE_NUMBER.match(line.text):
+            continue
+        for step in (-1, 1):
+            for distance in (1, 2):
+                j = i + step * distance
+                if not 0 <= j < len(lines):
+                    break
+                m = _LONE_NUMBER.match(lines[j].text)
+                if m:
+                    found[int(m.group(1))] = min(line.confidence, lines[j].confidence)
+                    break
+                if not (distance == 1 and _SCORE_CAPTION.search(lines[j].text)):
+                    break
+    candidates = {v: c for v, c in found.items() if 300 < v < 900}
+    if len(candidates) != 1:
+        return None
+    (value, conf), = candidates.items()
+    return Hit(str(value), conf * 0.85, "large number printed next to the score caption")
 
 
 def _bureau_accounts(view: PageView) -> list[dict[str, Any]]:

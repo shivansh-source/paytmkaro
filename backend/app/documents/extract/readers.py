@@ -44,7 +44,7 @@ class PageRead:
 
 _DATE_VALUE = re.compile(DATE_PATTERN, I)
 _PERSON = re.compile(r"[A-Za-z][A-Za-z .']*[A-Za-z.]")
-_NUMBER_TOKEN = re.compile(r"(?<![\w.])-?(?:₹|rs\.?)?\s*\d{1,3}(?:,\d{2,3})+(?:\.\d{1,2})?(?![\d,])|(?<![\w.,-])-?\d+(?:\.\d{1,2})?(?![\d,]|-\d)", I)
+_NUMBER_TOKEN = re.compile(r"(?<![\w.])-?(?:₹|rs\.?|inr)?\s*\d{1,3}(?:,\d{2,3})+(?:\.\d{1,2})?(?![\d,])|(?<![\w.,-])-?(?:₹|rs\.?|inr)?\s*\d+(?:\.\d{1,2})?(?![\d,]|-\d)", I)
 
 
 def _token_search(lines: list[Line], pattern: re.Pattern[str]) -> Hit | None:
@@ -118,6 +118,13 @@ _YOB_LABEL = re.compile(r"year\s*of\s*birth|\byob\b|जन्म\s*वर्ष"
 _GENDER = re.compile(r"\b(female|male|transgender)\b|महिला|पुरुष", I)
 _ADDRESS_LABEL = re.compile(r"\baddress\b|पता", I)
 _PIN = re.compile(r"(?<!\d)[1-9]\d{5}(?!\d)")
+_ADDRESS_LABEL_REPEAT = re.compile(r"^[\s:/|.\-–]*(?:पता|address)\b[\s:/|.\-–]*", I)
+_ADDRESS_NOT_LABEL = re.compile(r"address\s+(?:proof|update|change)|email\s*address|e-?mail", I)
+_ADDRESS_END = re.compile(
+    r"\b(?:uidai|help@|www\.|1947|vid\s*[:\d]|download\s*date|issue\s*date|enrol+ment\s*no|aadhaa?r\s*(?:no|number)|"
+    r"(?:authority|government)\s*of\s*india|mobile|phone)\b|\bdigitally\s*signed\b|\bdate\s*of\s*birth\b|\bdob\b",
+    I,
+)
 _AADHAAR_HEADER = re.compile(r"government|india|aadhaar|aadhar|uidai|enrol|issue|download|unique|authority|help|www|vid", I)
 
 
@@ -146,23 +153,32 @@ def read_aadhaar(view: PageView) -> PageRead:
                 if re.fullmatch(r"[A-Za-z][A-Za-z .']+", text) and not _AADHAAR_HEADER.search(text):
                     read.put("name", Hit(text, line.confidence * 0.9, "line above date of birth"))
                     break
+    _read_address(lines, read)
+    return read
+
+
+def _read_address(lines: list[Line], read: PageRead) -> None:
+    """Text after 'Address:' / 'पता' (front or back side) up to and including the line with the 6-digit
+    pincode, however many lines it spans. A header-like word inside the address ('Vidya Nagar', 'India')
+    does not end it: only footer lines (number, VID, UIDAI, website, helpline) and a masked number do."""
     for i, line in enumerate(lines):
         m = _ADDRESS_LABEL.search(line.text)
-        if not m:
+        if not m or _ADDRESS_NOT_LABEL.search(line.text):
             continue
-        parts, conf = [clean_value(line.text[m.end():])], line.confidence
-        for nxt in lines[i + 1 : i + 7]:
-            if _PIN.search(parts[-1] or "") or _LAST4.search(nxt.text) or _AADHAAR_HEADER.search(nxt.text):
+        first = _ADDRESS_LABEL_REPEAT.sub("", line.text[m.end():])  # bilingual 'पता: Address:'
+        parts, conf = [clean_value(first)], line.confidence
+        for nxt in lines[i + 1 : i + 9]:
+            if _PIN.search(parts[-1] or "") or _LAST4.search(nxt.text) or _ADDRESS_END.search(nxt.text):
                 break
             parts.append(clean_value(nxt.text))
             conf = min(conf, nxt.confidence)
         address = ", ".join(p.strip(", ") for p in parts if p)
-        if address:
-            read.put("address", Hit(address, conf))
-            if pins := _PIN.findall(address):
-                read.put("pincode", Hit(pins[-1], conf))
-        break
-    return read
+        if not address:
+            continue  # a stray 'address' word with nothing after it; try the next label
+        read.put("address", Hit(address, conf))
+        if pins := _PIN.findall(address):
+            read.put("pincode", Hit(pins[-1], conf))
+        return
 
 
 # ---------- GST REG-06 ----------
@@ -214,8 +230,10 @@ def read_gst_certificate(view: PageView) -> PageRead:
     trade = after_label(lines, re.compile(r"(?<!additional )trade\s*name(?:,?\s*if\s*any)?", I), stop=stop, ahead=1)
     if trade and not re.fullmatch(r"(?:na|n/a|nil|-+)", trade.value, I):
         read.put("trade_name", trade)
-    read.put("constitution_of_business", after_label(lines, re.compile(r"constitution\s*of\s*business", I), stop=stop, ahead=1))
-    address = _multiline_after(lines, re.compile(r"address\s*of\s*principal\s*place\s*of\s*business", I))
+    # The label is "Constitution of Business" on the certificate but "3. Constitution" in many table layouts;
+    # likewise "Address of Principal Place of Business" vs "4. Principal Place of Business".
+    read.put("constitution_of_business", after_label(lines, re.compile(r"constitution(?:\s*of\s*business)?", I), stop=stop, ahead=1))
+    address = _multiline_after(lines, re.compile(r"(?:address\s*of\s*)?(?:the\s*)?principal\s*place\s*of\s*business", I))
     read.put("address", address)
     if address and (pins := _PIN.findall(address.value)):
         read.put("pincode", Hit(pins[-1], address.confidence))
@@ -237,7 +255,8 @@ _MONTH_WORD = r"jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?
 _FY = re.compile(r"(?:financial\s*)?year\s*:?\s*(\d{4}\s*-\s*\d{2,4})", I)
 _PERIOD_NAMED = re.compile(rf"(?:tax\s*)?period\s*:?\s*({_MONTH_WORD})\b[\s,-]*(\d{{4}})?", I)
 _PERIOD_NUMERIC = re.compile(r"(?:tax\s*)?period\s*:?\s*(\d{1,2})\s*[/-]\s*(\d{4})", I)
-_ROW_A = re.compile(r"^\W*\(?a\)?\s*outward\s*taxable\s*supplies", I)
+_ROW_A = re.compile(r"^\W*(?:3\s*\.\s*1\s*)?\(?a\)?\s*outward\s*taxable\s*supplies", I)
+_PERIOD_LABEL_ONLY = re.compile(r"(?:tax\s*)?(?:period|month)\s*:?\s*$", I)
 
 
 def _period_key(month: int, year: int | None, fy_start: int | None) -> str | None:
@@ -264,12 +283,15 @@ def read_gstr_3b(view: PageView) -> PageRead:
         if m := _FY.search(text):
             read.put("financial_year", Hit(m.group(1).replace(" ", ""), line.confidence))
             fy_start = int(m.group(1)[:4])
-        if m := _PERIOD_NUMERIC.search(text):
+        # 'Tax Period: April 2026', or the label alone with the month printed on the next line.
+        period_text = f"{text} {lines[i + 1].text}" if _PERIOD_LABEL_ONLY.search(text) and i + 1 < len(lines) else text
+        if m := _PERIOD_NUMERIC.search(period_text):
             period = _period_key(int(m[1]), int(m[2]), fy_start)
-        elif m := _PERIOD_NAMED.search(text):
+        elif m := _PERIOD_NAMED.search(period_text):
             period = _period_key(MONTHS[m[1][:3].lower()], int(m[2]) if m[2] else None, fy_start)
-        if _ROW_A.search(text):
-            tail = text[text.rfind(")") + 1 :] if ")" in text[5:] else text[_ROW_A.search(text).end() :]
+        if row_a := _ROW_A.search(text):
+            # Amounts follow the description, which may itself have a bracket '(other than zero rated...)'.
+            tail = re.sub(r"\([^)]*\)", " ", text[row_a.end():])
             values = _numbers(tail)
             if not values and i + 1 < len(lines):
                 values = _numbers(lines[i + 1].text)
