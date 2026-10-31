@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { ApplyPanel } from "../../../../components/msme/ApplyPanel";
 import { useMsme } from "../../../../components/msme/MsmeProvider";
 import { ErrorNote, PageHeader } from "../../../../components/msme/ui";
 import { api } from "../../../../lib/api";
@@ -83,6 +84,8 @@ export default function OfferPage() {
           </dl>
         </div>
       </section>
+
+      <ApplyPanel productId={offer.product_id} lender={offer.lender} />
 
       <section className="panel fade-in">
         <h2 className="section-title">Your right to cancel</h2>

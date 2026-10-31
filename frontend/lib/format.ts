@@ -91,3 +91,26 @@ export function formatField(name: string, value: unknown): string {
   if (name === "aadhaar_last4" || name === "account_number_last4") return `XXXX XXXX ${value}`;
   return String(value).replace(/_/g, " ");
 }
+
+export const APPLICATION_STATUS: Record<string, { label: string; tone: "ok" | "warn" | "bad" | "neutral" }> = {
+  submitted: { label: "New", tone: "warn" },
+  in_review: { label: "In review", tone: "neutral" },
+  approved_in_principle: { label: "Approved in principle", tone: "ok" },
+  info_requested: { label: "Info requested", tone: "warn" },
+  declined: { label: "Not yet", tone: "bad" },
+  withdrawn: { label: "Withdrawn", tone: "neutral" }
+};
+
+export const DECLINE_REASONS: { value: string; label: string }[] = [
+  { value: "vintage", label: "Business too new" },
+  { value: "turnover", label: "Turnover too low" },
+  { value: "cash_flow", label: "EMIs or bounces too high" },
+  { value: "credit_history", label: "Credit history" },
+  { value: "documents", label: "Documents need fixing" },
+  { value: "policy", label: "Outside current policy" },
+  { value: "other", label: "Other (explain in note)" }
+];
+
+export function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+}

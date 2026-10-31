@@ -1,0 +1,105 @@
+import { CheckIcon, StatusPill } from "./msme/ui";
+import { FIELD_LABEL, SOURCE_LABEL, documentName, formatDate, formatField, inr, monthLabel } from "../lib/format";
+import type { Envelope, Extracted, Transaction } from "../lib/types";
+
+function isExtracted(value: unknown): value is Extracted {
+  return typeof value === "object" && value !== null && "confidence" in value && "source" in value;
+}
+
+/** Rows the balance-math check flagged, with what the balance should have been. */
+function brokenRows(doc: Envelope) {
+  const check = doc.checks.find((c) => c.id === "bank.balance_math" && c.status !== "pass");
+  if (!check || !doc.data) return [];
+  const txns = doc.data.transactions as Transaction[];
+  const opening = (doc.data.opening_balance as Extracted<number>).value ?? 0;
+  return check.fields
+    .map((f) => Number(f.split(".").pop()))
+    .filter((i) => Number.isInteger(i))
+    .map((i) => {
+      const previous = i === 0 ? opening : txns[i - 1].balance;
+      return { row: txns[i], expected: previous + txns[i].credit - txns[i].debit };
+    });
+}
+
+/** One checked document: checks, flagged rows, extracted fields with confidence.
+ * Pass `onConfirm` for the MSME (confirm low-confidence fields); omit it for the read-only lender view.
+ * Anchors: #doc-{id} on the card, #field-{id}-{name} on each field, for evidence links. */
+export function DocumentCard({ doc, onConfirm, busy = false }: { doc: Envelope; onConfirm?: (field: string) => void; busy?: boolean }) {
+  const fields = Object.entries(doc.data ?? {}).filter(([, v]) => isExtracted(v)) as [string, Extracted][];
+  const txns = (doc.data?.transactions as Transaction[] | undefined) ?? null;
+  const months = (doc.data?.months as { period: string }[] | undefined) ?? null;
+  const broken = brokenRows(doc);
+
+  return (
+    <article className="panel review-card fade-in" id={`doc-${doc.document_id}`}>
+      <header className="review-head">
+        <div>
+          <h3>{documentName(doc.document_type)}</h3>
+          <p className="muted small">
+            {doc.file.file_name}
+            {doc.triage && ` · ${SOURCE_LABEL[doc.triage.extractor] ?? doc.triage.extractor}`}
+            {doc.triage?.fell_back_to_vlm && " (fell back to AI vision)"}
+          </p>
+        </div>
+        <StatusPill status={doc.status} />
+      </header>
+
+      <ul className="check-list">
+        {doc.checks.map((c) => (
+          <li key={c.id}>
+            <CheckIcon status={c.status} />
+            {c.message}
+          </li>
+        ))}
+      </ul>
+
+      {broken.length > 0 && (
+        <div className="tamper-box">
+          <strong>Rows that don&apos;t add up</strong>
+          {broken.map(({ row, expected }) => (
+            <p key={row.date + row.narration}>
+              {formatDate(row.date)} · {row.narration}: credit {inr(row.credit)}. The balance should be {inr(expected)}, the
+              statement shows {inr(row.balance)}.
+            </p>
+          ))}
+        </div>
+      )}
+
+      <table className="field-table">
+        <tbody>
+          {fields.map(([name, field]) => (
+            <tr key={name} id={`field-${doc.document_id}-${name}`} className={field.needs_review ? "needs-review" : undefined}>
+              <th>{FIELD_LABEL[name] ?? name}</th>
+              <td>{formatField(name, field.value)}</td>
+              <td className="confidence">
+                <span className="bar">
+                  <i style={{ width: `${Math.round(field.confidence * 100)}%` }} />
+                </span>
+                {Math.round(field.confidence * 100)}%
+              </td>
+              <td className="confirm-cell">
+                {field.user_confirmed ? (
+                  <span className="muted small">Confirmed{onConfirm ? "" : " by applicant"}</span>
+                ) : field.needs_review && onConfirm ? (
+                  <button type="button" className="btn btn-small" disabled={busy} onClick={() => onConfirm(name)}>
+                    Confirm
+                  </button>
+                ) : field.needs_review ? (
+                  <span className="muted small">Unconfirmed</span>
+                ) : null}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {txns && (
+        <p className="muted small">
+          {txns.length} transactions read · {txns.filter((t) => t.tags.includes("bounce")).length} bounces ·{" "}
+          {txns.filter((t) => t.tags.includes("emi")).length} EMI debits
+        </p>
+      )}
+      {months && <p className="muted small">{months.length} monthly returns: {months.map((m) => monthLabel(m.period)).join(", ")}</p>}
+    </article>
+  );
+}

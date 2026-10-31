@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { BridgeMark } from "../BridgeMark";
+import { api } from "../../lib/api";
 import { DEMO_OTP, homeFor, readSession, writeSession, type Role } from "../../lib/session";
 
 const ROLES: { role: Role; title: string; body: string }[] = [
@@ -21,6 +22,16 @@ export function RegisterForm({ initialRole }: { initialRole: Role | null }) {
   const [mobile, setMobile] = useState("");
   const [otp, setOtp] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [institutions, setInstitutions] = useState<string[] | null>(null);
+
+  // Lenders pick their institution, so the inbox knows whose applications to show.
+  useEffect(() => {
+    if (role !== "lender" || institutions) return;
+    api
+      .lenders()
+      .then((products) => setInstitutions([...new Set(products.map((p) => p.lender))]))
+      .catch(() => setInstitutions([]));
+  }, [role, institutions]);
 
   // Already signed in with this role? Go straight to the workspace.
   useEffect(() => {
@@ -74,12 +85,23 @@ export function RegisterForm({ initialRole }: { initialRole: Role | null }) {
               <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ravi Kumar" autoFocus />
             </label>
             <label>
-              {role === "msme" ? "Business name" : "Bank / NBFC name"}
-              <input
-                value={organisation}
-                onChange={(e) => setOrganisation(e.target.value)}
-                placeholder={role === "msme" ? "Kumar Stores" : "Demo NBFC B"}
-              />
+              {role === "msme" ? "Business name" : "Your institution"}
+              {role === "lender" && institutions && institutions.length > 0 ? (
+                <select value={organisation} onChange={(e) => setOrganisation(e.target.value)}>
+                  <option value="">Choose your bank or NBFC</option>
+                  {institutions.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  value={organisation}
+                  onChange={(e) => setOrganisation(e.target.value)}
+                  placeholder={role === "msme" ? "Kumar Stores" : "Demo NBFC B"}
+                />
+              )}
             </label>
             <label>
               Mobile number

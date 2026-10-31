@@ -25,7 +25,8 @@ export function Shell({ children }: { children: ReactNode }) {
     { href: "/msme/review", label: "Review checks", done: !!assessment, locked: !assessment },
     { href: "/msme/readiness", label: "Readiness score", done: !!assessment?.profile.readiness, locked: !assessment },
     { href: "/msme/matches", label: "Lender matches", done: !!matches, locked: !assessment },
-    { href: "/msme/offer", label: "Offer & KFS", done: false, locked: !matches }
+    { href: "/msme/offer", label: "Offer & KFS", done: false, locked: !matches },
+    { href: "/msme/applications", label: "Applications", done: false, locked: !assessment }
   ];
 
   const signOut = () => {

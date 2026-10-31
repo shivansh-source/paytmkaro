@@ -10,12 +10,18 @@ shortlist in under a day. The lender still makes the credit decision, on a compl
 
 ## Who owns what
 
-- **Lakshya:** OCR / VLM extraction. Output contract: `DocumentEnvelope` (`schemas/v1/msme/`). Aadhaar
-  is masked in his layer (Verhoeff on the full number, then only `aadhaar_last4` leaves it). Extracts raw
-  values with confidence + bbox; does not "fix" misreads.
+- **Lakshya:** OCR / VLM extraction (`backend/app/documents/`: ingest, classify, extract) **and the
+  scoring engine (`backend/app/scoring/`: metrics, readiness score, fix-it list)**. He owns and improves
+  the existing scoring code and its tests (`tests/test_scoring.py`); no parallel version. His older
+  `app/documents/extract/features.py` duplicates validation + scoring and is superseded.
+  Extraction contract: output must become `DocumentEnvelope` (`schemas/v1/msme/`); Aadhaar is masked in
+  his layer (Verhoeff on the full number, then only `aadhaar_last4` leaves it); values that fail
+  validation must be kept (low confidence) rather than dropped, so checks can show ✗ and the user can
+  confirm. Coordinate before changing `SmeProfile` / `CashflowMetrics` / `Readiness` shapes: both
+  dashboards, the engine adapter and lender applications read them.
 - **Anansh:** lender schema. Owns `schemas/v1/lender/lender_product.schema.json` and lender records.
-- **Shivansh (with Claude):** validation + cash-flow metrics + readiness (envelopes → `SmeProfile`),
-  recommendation engine, landing page, login, the MSME dashboard **and the lender-side screens**.
+- **Shivansh (with Claude):** validation (`app/validation/`), recommendation engine, offers/KFS, landing
+  page, login, the MSME dashboard **and the lender side** (applications + lender screens).
   Transaction tagging (bounce / EMI / NACH) from narrations happens in validation, not extraction.
 
 ## Product in brief
