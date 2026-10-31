@@ -91,6 +91,7 @@ export function MsmeProvider({ children }: { children: ReactNode }) {
   // Uploaded envelopes, updated synchronously so uploads that finish together don't overwrite each other.
   const uploaded = useRef<Envelope[]>([]);
   const assessSeq = useRef(0);
+  const uploadedBureau = useRef<AssessBody["bureau"]>(null); // score from an uploaded bureau report
   const files = useRef<Partial<Record<DocumentType, File>>>({}); // kept in memory for a password retry
 
   useEffect(() => {
@@ -105,7 +106,10 @@ export function MsmeProvider({ children }: { children: ReactNode }) {
             slot.message = "The page was reloaded before this finished. Please choose the file again.";
           }
         }
-        if (!restored.sampleLabel) uploaded.current = restored.assessBody?.documents ?? [];
+        if (!restored.sampleLabel) {
+          uploaded.current = restored.assessBody?.documents ?? [];
+          uploadedBureau.current = restored.assessBody?.bureau ?? null;
+        }
         setState(restored);
       }
     } catch {
@@ -143,6 +147,7 @@ export function MsmeProvider({ children }: { children: ReactNode }) {
         };
         const assessment = await api.assess(body);
         uploaded.current = [];
+        uploadedBureau.current = null;
         assessSeq.current += 1; // a slow upload finishing later must not replace the sample
         setState((s) => ({ ...s, sampleLabel: label, uploads: {}, assessBody: body, assessment, matches: null }));
       }),
@@ -164,19 +169,21 @@ export function MsmeProvider({ children }: { children: ReactNode }) {
           setSlot(slot, { ...blank, state: "password", message: result.message });
           return;
         }
-        if (result.status !== "ok" || result.documents.length === 0) {
+        const usable = result.envelopes.filter((d) => d.status !== "failed");
+        if (result.status !== "ok" || usable.length === 0) {
           const message = result.message ?? result.skipped[0]?.reason ?? "We couldn't read anything from this file.";
           setSlot(slot, { ...blank, state: "error", message, skipped: result.skipped, warnings: result.warnings });
           return;
         }
         delete files.current[slot];
-        uploaded.current = merge(uploaded.current, result.documents);
+        uploaded.current = merge(uploaded.current, usable);
+        if (result.bureau) uploadedBureau.current = result.bureau;
         setSlot(slot, {
           ...blank,
           state: "done",
           skipped: result.skipped,
           warnings: result.warnings,
-          document_ids: result.documents.map((d) => d.document_id)
+          document_ids: usable.map((d) => d.document_id)
         });
 
         // Re-assess the whole file. Only the latest assessment is kept if several uploads overlap.
@@ -186,7 +193,8 @@ export function MsmeProvider({ children }: { children: ReactNode }) {
           sme_id: smeId(),
           documents: uploaded.current,
           sector: told?.sector ?? null,
-          bureau: told?.credit_score ? { value: told.credit_score, source: "self_declared" } : null
+          // A score the SME typed wins over one read from an uploaded report; both are self-declared.
+          bureau: told?.credit_score ? { value: told.credit_score, source: "self_declared" } : uploadedBureau.current
         };
         const assessment = await api.assess(body);
         if (seq === assessSeq.current) {
@@ -271,6 +279,7 @@ export function MsmeProvider({ children }: { children: ReactNode }) {
       setSort: (sort) => setState((s) => ({ ...s, sort })),
       reset: () => {
         uploaded.current = [];
+        uploadedBureau.current = null;
         files.current = {};
         setState(INITIAL);
       }

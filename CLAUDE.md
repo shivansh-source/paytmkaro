@@ -71,8 +71,8 @@ backend/                 FastAPI (Python 3.13)
                          understand.py reads free-typed answers (rules, then Sarvam)
     llm/                 LLM clients (Sarvam). Human-facing only: understanding / explaining, never deciding
     applications/        MSME → lender applications (SQLite), consent, decisions, demo seed
-    documents/           ingest / classify / extract pipeline (OCR, VLM, privacy masking)
-    intake/              upload → pipeline → DocumentEnvelope: bridge.py (field mapping), upload.py
+    documents/           ingest / classify / extract pipeline (OCR, VLM, privacy masking);
+                         extract/envelope.py = the bridge to DocumentEnvelope, process.py = one upload end to end
     assessment/          indicative lender ScoreCard (51-parameter registry, DESIGN.md)
   data/
     lenders.json         mock lender products (edit freely; re-read on every request)
@@ -129,8 +129,8 @@ offers/            test_kfs (EMI, fees, true APR)
 questionnaire/     test_prequalify (estimates, checklist), test_understand (free text: rules, fake LLM, guardrails)
 applications/      test_applications (consent, re-assess, decisions)
 api/               test_demo_flow (assess → match → offer through HTTP, samples)
-intake/            test_bridge (pipeline → envelope, kept failed reads, boxes, privacy), test_upload_api
-documents/         ingest / classify / extract / privacy tests (own conftest with skip guards)
+documents/         ingest / classify / extract / bridge / process_upload / privacy tests (own conftest with skip guards);
+                   test_upload_extras: kept failed reads, slot hints, skipped reasons, the OCR/VLM rule
 fixtures/          sample .docx/.pdf inputs + make_sample_documents.py
 ```
 
@@ -143,7 +143,7 @@ The dashboard calls `/api/v1/*`, which `next.config.mjs` rewrites to FastAPI (`B
 **AI keys** live in `backend/.env` (git-ignored, loaded by `app/config.py`): `SARVAM_API_KEY` (free-text
 questionnaire), `GROQ_API_KEY` (VLM fallback for photos). Never paste keys in chat or commit them. Tests never call a
 real model: `tests/conftest.py` blanks `SARVAM_API_KEY`, `tests/questionnaire/test_understand.py` injects a fake,
-and `tests/intake/conftest.py` gives the upload route no OCR / VLM (tests pass `FakeOcr`). Real-engine tests are
+and `tests/api/test_documents_api.py` gives the upload route no OCR / VLM (other tests pass `FakeOcr`). Real-engine tests are
 opt-in: `RUN_OCR_TESTS=1`, `RUN_VLM_TESTS=1`.
 
 **OCR / VLM for uploads.** Digital PDFs, spreadsheets, Word and CSV need neither. Photos and scans need
@@ -231,7 +231,7 @@ client-side navigation. `lib/types.ts` mirrors the backend contracts the UI read
 
 | Method | Path                        | Status                            |
 | ------ | --------------------------- | --------------------------------- |
-| POST   | `/v1/documents`             | multipart `file`, `sme_id`, optional `document_type` (slot hint) + `password` → `UploadResult`: envelopes, skipped parts with reasons, warnings. Always 200; `status` says `password_required` / `unsupported_format` / … Nothing stored |
+| POST   | `/v1/documents`             | multipart `file`, `sme_id`, optional `document_type` (slot hint) + `password` → `ProcessResult`: envelopes, skipped parts with reasons, self-declared `bureau` from an uploaded report, warnings. Always 200; `status` says `password_required` / `nothing_recognised` / … Nothing stored |
 | GET    | `/v1/profile/{sme_id}`      | stub (no storage yet)                                    |
 | POST   | `/v1/assess`                | envelopes → checked documents + `SmeProfile`             |
 | POST   | `/v1/score`                 | same body as `/v1/assess` → indicative `ScoreCard` (`app/assessment`; weights uncalibrated, not used for matching) |
@@ -320,8 +320,11 @@ extraction is returned raw).
 
 **Extraction entry point:** `app/documents/process.py::process_upload(bytes, file_name, sme_id=...)` runs
 ingest → classify → extract → `DocumentEnvelope` with one shared VLM budget and never raises (it returns a
-status). It also offers `bureau` from an uploaded report as `self_declared` (unverified); nothing passes it to
-`assess()` yet. `/v1/documents` is still a stub.
+status). `POST /v1/documents` calls it with `default_engines()` (same module) and the upload slot as
+`expected_type` (a hint used only when nothing is recognised). It returns `skipped` parts with user-facing
+reasons, keeps reads that failed the extractor's checks at confidence 0.3 (bridge: `KEEP_REJECTED_AS_VALUE`)
+and offers `bureau` from an uploaded report as `self_declared`; the upload page uses it unless the SME typed
+a score in the questionnaire.
 
 Demo documents: PAN (photo→VLM), Aadhaar (photo→VLM), GST REG-06 (PDF→parser), GSTR-3B 6 months
 (PDF→parser), bank statement 6-12 months (scanned PDF→OCR tables), Udyam (PDF or photo), ITR-V
@@ -438,7 +441,7 @@ speaker to check before demoing. Score 82, ₹ figures and "R. Kumar" are sample
   `/v1/score` (PR #6).
 - Landing page, login, extractor + classifier (PR #3).
 
-- **Uploads connected to extraction** (`app/intake/`, `POST /v1/documents`, upload page): real files go
+- **Uploads connected to extraction** (`app/documents/process.py`, `POST /v1/documents`, upload page; PRs #7 + #8, one bridge): real files go
   ingest → classify → extract → envelope → assess. Verified on Lakshya's fixtures: digital PDFs, XLSX, a
   bundled PDF (split per document), a password-protected e-Aadhaar, phone photos via PaddleOCR (with boxes).
 

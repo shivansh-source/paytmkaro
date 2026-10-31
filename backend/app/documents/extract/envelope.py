@@ -13,6 +13,8 @@ Conversions
 - bbox: OCR pixel box on Page.image_png -> page fractions 0-1, page = index + 1; None when there is no
   unambiguous box (never fabricated).
 - raw_text: the value as read, before normalising (kept when a letter/digit swap was repaired).
+- A value that was read but failed the extractor's checks is kept at REJECTED_CONFIDENCE (free-text
+  identifiers keep the read as the value; dates, amounts and enums keep it only as raw_text). Never for Aadhaar.
 """
 
 from __future__ import annotations
@@ -25,7 +27,7 @@ from statistics import mean
 from typing import Any
 
 from app.documents.extract.common import money, parse_date
-from app.documents.extract.pipeline import Extraction
+from app.documents.extract.pipeline import Extraction, RejectedRead
 from app.documents.models import DocumentType as DT
 from app.documents.models import ExtractionResult, FieldSource, LoadedDocument, OcrLine, Page, SourceFormat, TextSource
 from app.schemas.common import Address, BBox, DocumentType, Extracted, RowProvenance, Source
@@ -78,6 +80,12 @@ MIME: dict[SourceFormat, str] = {
 }
 _IMAGE_FORMATS = {SourceFormat.JPEG, SourceFormat.PNG, SourceFormat.WEBP, SourceFormat.TIFF, SourceFormat.BMP, SourceFormat.HEIC}
 _CONSTITUTIONS = {"proprietorship", "partnership", "llp", "pvt_ltd", "public_ltd", "huf", "trust", "society"}
+REJECTED_CONFIDENCE = 0.3  # read, but failed a format / checksum check: always needs review
+# Pipeline fields whose envelope slot is a plain string, so a rejected read can be stored as the value.
+KEEP_REJECTED_AS_VALUE = {
+    "pan", "gstin", "ifsc", "udyam_number", "acknowledgement_number", "assessment_year", "form_type",
+    "name", "father_name", "legal_name", "trade_name", "account_holder_name", "bank_name", "enterprise_name",
+}
 INFERRED_DIRECTION_CONFIDENCE = 0.8  # a debit/credit decided by narration words, not by the balance, is less certain
 
 
@@ -128,6 +136,7 @@ class _Ctx:
     pages: list[Page]
     default_source: Source
     notes: list[str]
+    rejected: dict[str, RejectedRead] = field(default_factory=dict)
 
     def page(self, index: int | None) -> Page | None:
         return next((p for p in self.pages if p.index == index), None) if index is not None else None
@@ -162,6 +171,13 @@ class _Ctx:
 
     def x(self, name: str, convert: Callable[[Any], Any] | None = None, *, required: bool = True, boxed: bool = True) -> Extracted | None:
         f = self.result.fields.get(name)
+        if f is None and (r := self.rejected.get(name)) is not None:
+            # Read but failed the extractor's checks (a GSTIN with a wrong check digit). Kept, flagged for review,
+            # so validation shows ✗ on it and the SME can correct it instead of the field quietly going missing.
+            return Extracted(
+                value=r.raw if name in KEEP_REJECTED_AS_VALUE else None, confidence=REJECTED_CONFIDENCE,
+                source=SOURCE[r.source], raw_text=r.raw, bbox=self.find_box(r.page_index, [r.raw]) if boxed else None,
+            )
         if f is None:
             return Extracted(value=None, confidence=0.0, source=self.default_source, raw_text=self.raw.get(name)) if required else None
         try:
@@ -357,6 +373,7 @@ def build_envelope(
     """The envelope for one extracted document (or one segment of a bundle), or None when the
     envelope has no slot for this document type."""
     result, raw = (extraction.result, extraction.raw) if isinstance(extraction, Extraction) else (extraction, {})
+    rejected = extraction.rejected if isinstance(extraction, Extraction) else {}
     if result.document_type not in ENVELOPE_TYPE:
         return None
     pages = [p for p in document.pages if page_indexes is None or p.index in page_indexes]
@@ -373,7 +390,7 @@ def build_envelope(
         error = result.warnings[0] if result.warnings else "No fields could be read from this document."
         return BridgeOutput(DocumentEnvelope(**base, status="failed", data=None, error=error), list(result.warnings))
 
-    ctx = _Ctx(result, raw, document, pages, triage.extractor, [])
+    ctx = _Ctx(result, raw, document, pages, triage.extractor, [], rejected)
     data = BUILDERS[result.document_type](ctx)
     return BridgeOutput(DocumentEnvelope(**base, status="needs_review", data=data), ctx.notes)
 

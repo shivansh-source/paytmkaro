@@ -56,8 +56,15 @@ export interface Envelope {
   error?: string | null;
 }
 
-// POST /v1/documents: one file can hold several documents (a PDF with PAN + Aadhaar).
-export type LoadStatus = "ok" | "password_required" | "unsupported_format" | "unreadable" | "too_large";
+// POST /v1/documents (backend app/documents/process.py): one file can hold several documents.
+export type UploadStatus =
+  | "ok"
+  | "nothing_recognised"
+  | "password_required"
+  | "unsupported_format"
+  | "unreadable"
+  | "too_large"
+  | "error";
 
 export interface SkippedPart {
   pages: number[]; // 1-based
@@ -67,10 +74,11 @@ export interface SkippedPart {
 
 export interface UploadResult {
   file_name: string;
-  status: LoadStatus;
+  status: UploadStatus;
   message?: string | null;
-  documents: Envelope[];
+  envelopes: Envelope[]; // status "failed" when a recognised document had nothing readable
   skipped: SkippedPart[];
+  bureau?: { value: number; source: string; as_of?: string | null } | null; // from an uploaded report: self-declared
   warnings: string[];
 }
 
