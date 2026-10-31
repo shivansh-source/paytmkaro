@@ -27,5 +27,11 @@ services:
         sync: false
       - key: GROQ_API_KEY
         sync: false
+      - key: GROQ_API_KEY_2             # extra Groq keys = extra VLM workers (one upload per key at a time)
+        sync: false
+      - key: GROQ_API_KEY_3
+        sync: false
+      - key: OCR_ENABLED                # 0 = no PaddleOCR; digital PDFs via PyMuPDF, scans/photos via the Groq VLM
+        value: "0"
       - key: CREDITSETU_SEED            # demo applications in the lender inbox
         value: "1"

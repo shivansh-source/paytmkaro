@@ -66,6 +66,7 @@ def test_wrong_slot_warns_but_uses_what_the_document_is():
 
 
 def test_no_ocr_means_no_vlm_so_unredacted_images_never_leave(monkeypatch):
+    monkeypatch.setattr("app.config.OCR_ENABLED", True)
     monkeypatch.setattr(process, "default_ocr", lambda: None)
     monkeypatch.setattr(process, "get_default_vlm", lambda: object())
     assert process.default_engines() == (None, None)
