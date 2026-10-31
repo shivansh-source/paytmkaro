@@ -1,5 +1,5 @@
 {
- "config_version": "2026.10-placeholder.1",
+ "config_version": "2026.10-placeholder.2",
  "calibrated": false,
  "note": "Every weight and band in this file is an UNCALIBRATED placeholder unless weight_source is 'reference'. 'reference' means the weight is the one documented in an internal lender reference scorecard for a parameter we cannot compute yet; it has not been validated for India either. A lender's credit team must calibrate this file against its own default outcomes before the index is used for anything but a conversation starter.",
  "grades": [
@@ -636,12 +636,52 @@
   "bc.od_utilisation": {
    "weight": 2,
    "weight_source": "placeholder",
-   "bands": []
+   "bands": [
+    {
+     "max": 0.5,
+     "points": 100,
+     "label": "overdraft lightly used"
+    },
+    {
+     "max": 0.75,
+     "points": 75,
+     "label": "overdraft moderately used"
+    },
+    {
+     "max": 0.9,
+     "points": 45,
+     "label": "overdraft heavily used"
+    },
+    {
+     "max": 1.0,
+     "points": 20,
+     "label": "overdraft close to its limit"
+    },
+    {
+     "points": 5,
+     "label": "overdraft used beyond its sanctioned limit"
+    }
+   ]
   },
   "bc.pg_settlements": {
    "weight": 2,
    "weight_source": "placeholder",
-   "bands": []
+   "bands": [
+    {
+     "max": 1.1,
+     "points": 100,
+     "label": "settlements fit within the bank inflow"
+    },
+    {
+     "max": 1.3,
+     "points": 40,
+     "label": "settlements exceed the bank inflow: the settlement account may differ from the uploaded statement"
+    },
+    {
+     "points": 10,
+     "label": "settlements far exceed the bank inflow"
+    }
+   ]
   },
   "bc.macro_shock": {
    "weight": 1,
@@ -651,32 +691,159 @@
   "bc.margin_facility": {
    "weight": 3,
    "weight_source": "reference",
-   "bands": []
+   "bands": [
+    {
+     "value": "not_margined",
+     "points": 100,
+     "label": "no cash-margined facility"
+    },
+    {
+     "value": "cash_margined",
+     "points": 40,
+     "label": "a facility is fully cash-margined"
+    }
+   ]
   },
   "bc.facility_trend": {
    "weight": 1,
    "weight_source": "reference",
-   "bands": []
+   "bands": [
+    {
+     "value": "increased",
+     "points": 100,
+     "label": "limit increased at the last renewal"
+    },
+    {
+     "value": "same",
+     "points": 75,
+     "label": "limit unchanged at the last renewal"
+    },
+    {
+     "value": "decreased",
+     "points": 30,
+     "label": "limit reduced at the last renewal"
+    }
+   ]
   },
   "fn.revenue_growth_yoy": {
    "weight": 2,
    "weight_source": "placeholder",
-   "bands": []
+   "bands": [
+    {
+     "min": 0.15,
+     "points": 100,
+     "label": "strong revenue growth"
+    },
+    {
+     "min": 0.05,
+     "points": 80,
+     "label": "healthy revenue growth"
+    },
+    {
+     "min": 0.0,
+     "points": 60,
+     "label": "flat revenue"
+    },
+    {
+     "min": -0.1,
+     "points": 35,
+     "label": "revenue fell by up to 10%"
+    },
+    {
+     "points": 10,
+     "label": "revenue fell by more than 10%"
+    }
+   ]
   },
   "fn.net_margin": {
    "weight": 2,
    "weight_source": "placeholder",
-   "bands": []
+   "bands": [
+    {
+     "min": 0.1,
+     "points": 100,
+     "label": "strong profit margin"
+    },
+    {
+     "min": 0.05,
+     "points": 80,
+     "label": "healthy profit margin"
+    },
+    {
+     "min": 0.02,
+     "points": 55,
+     "label": "thin profit margin"
+    },
+    {
+     "min": 0.0,
+     "points": 30,
+     "label": "very thin profit margin"
+    },
+    {
+     "points": 5,
+     "label": "loss-making"
+    }
+   ]
   },
   "fn.leverage": {
    "weight": 2,
    "weight_source": "placeholder",
-   "bands": []
+   "bands": [
+    {
+     "max": 0.5,
+     "points": 100,
+     "label": "low borrowing against net worth"
+    },
+    {
+     "max": 1.0,
+     "points": 80,
+     "label": "moderate borrowing against net worth"
+    },
+    {
+     "max": 2.0,
+     "points": 55,
+     "label": "high borrowing against net worth"
+    },
+    {
+     "max": 3.0,
+     "points": 30,
+     "label": "very high borrowing against net worth"
+    },
+    {
+     "points": 10,
+     "label": "borrowings far exceed net worth"
+    }
+   ]
   },
   "fn.dscr": {
    "weight": 3,
    "weight_source": "placeholder",
-   "bands": []
+   "bands": [
+    {
+     "min": 2.0,
+     "points": 100,
+     "label": "comfortable debt service coverage"
+    },
+    {
+     "min": 1.5,
+     "points": 85,
+     "label": "good debt service coverage"
+    },
+    {
+     "min": 1.25,
+     "points": 65,
+     "label": "adequate debt service coverage"
+    },
+    {
+     "min": 1.0,
+     "points": 35,
+     "label": "tight debt service coverage"
+    },
+    {
+     "points": 5,
+     "label": "cash profit does not cover debt service"
+    }
+   ]
   },
   "fn.unit_economics": {
    "weight": 3,
@@ -716,22 +883,107 @@
   "rb.cmr": {
    "weight": 3,
    "weight_source": "placeholder",
-   "bands": []
+   "bands": [
+    {
+     "max": 2,
+     "points": 100,
+     "label": "low commercial risk rank (CMR 1-2)"
+    },
+    {
+     "max": 3,
+     "points": 85,
+     "label": "low-to-moderate commercial risk rank (CMR 3)"
+    },
+    {
+     "max": 5,
+     "points": 60,
+     "label": "moderate commercial risk rank (CMR 4-5)"
+    },
+    {
+     "max": 6,
+     "points": 40,
+     "label": "elevated commercial risk rank (CMR 6)"
+    },
+    {
+     "max": 8,
+     "points": 20,
+     "label": "high commercial risk rank (CMR 7-8)"
+    },
+    {
+     "points": 5,
+     "label": "very high commercial risk rank (CMR 9-10)"
+    }
+   ]
   },
   "rb.worst_dpd_24m": {
    "weight": 3,
    "weight_source": "placeholder",
-   "bands": []
+   "bands": [
+    {
+     "max": 0,
+     "points": 100,
+     "label": "no overdue days in 24 months"
+    },
+    {
+     "max": 30,
+     "points": 70,
+     "label": "a short delay of up to 30 days"
+    },
+    {
+     "max": 60,
+     "points": 40,
+     "label": "a delay of up to 60 days"
+    },
+    {
+     "max": 90,
+     "points": 15,
+     "label": "a delay of up to 90 days"
+    },
+    {
+     "points": 0,
+     "label": "over 90 days past due: a serious delinquency"
+    }
+   ]
   },
   "rb.enquiries_90d": {
    "weight": 1,
    "weight_source": "placeholder",
-   "bands": []
+   "bands": [
+    {
+     "max": 2,
+     "points": 100,
+     "label": "few recent credit enquiries"
+    },
+    {
+     "max": 4,
+     "points": 70,
+     "label": "several recent credit enquiries"
+    },
+    {
+     "max": 6,
+     "points": 40,
+     "label": "many recent credit enquiries"
+    },
+    {
+     "points": 15,
+     "label": "a very high number of recent credit enquiries: a credit-seeking signal"
+    }
+   ]
   },
   "rb.adverse_flags": {
    "weight": 3,
    "weight_source": "reference",
-   "bands": []
+   "bands": [
+    {
+     "max": 0,
+     "points": 100,
+     "label": "no adverse credit flag"
+    },
+    {
+     "points": 0,
+     "label": "an adverse credit flag is reported"
+    }
+   ]
   },
   "rb.voluntary_disclosure": {
    "weight": 1,

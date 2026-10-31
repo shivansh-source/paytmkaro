@@ -17,10 +17,20 @@ it, never redefined here (definitions: app/scoring/metrics.py). New metrics defi
 - GST turnover trend = same shape as revenue trend, on GSTR-3B outward value (>= 4 months)
 - low-confidence field share = extracted fields needing review / all extracted fields
 - ITR income margin = ITR-V gross total income / GST turnover (12m)
+- bureau details (CMR rank, worst DPD, enquiries, adverse flags): read from SmeProfile.bureau, else from the
+  newest uploaded bureau report; unverified unless the score was pulled from a bureau
+- revenue growth = revenue / prior-year revenue - 1; net margin = profit after tax / revenue; leverage =
+  (long + short term borrowings) / net worth; DSCR = (PAT + depreciation + interest) / (principal + interest).
+  Always recomputed from the components, in rupees; the latest financial year is used, never a mix of years
+- overdraft utilisation = average overdrawn amount (negative end-of-day balance) / sanctioned limit, only when
+  the statement does go negative (otherwise it cannot be tied to the overdraft account)
+- settlement ratio = settlement net / bank business credits over the months both cover (>= 2); a consistency
+  check, not a measure of how digital the business is
 """
 
 from __future__ import annotations
 
+import re
 import statistics
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -384,3 +394,258 @@ premises_agreement = cross_check_status(
     CrossCheck.ADDRESS_MATCH, _statuses("Address agrees across documents", "Address differs slightly across documents", "Address differs across documents"))
 kyc_record_match = cross_check_status(
     CrossCheck.DOB_MATCH, _statuses("PAN and Aadhaar records agree", "PAN and Aadhaar could not be fully compared", "PAN and Aadhaar records disagree"))
+
+
+# ---- documents added in schema 1.1 / 1.2: bureau report, financial statements, sanction letter, settlement ----
+
+BUREAU_STALE_DAYS = 90  # placeholder: an older report is flagged on the card, not discarded
+
+
+def _usable(ctx: Context, doc_type: DocumentType) -> list[DocumentEnvelope]:
+    """Every usable envelope of one type, oldest upload first. DocumentSet keeps only the latest per type."""
+    found = [e for e in ctx.by_id.values() if e.document_type == doc_type and e.data is not None and e.status != "failed"]
+    return sorted(found, key=lambda e: e.uploaded_at)
+
+
+def _field_value(env: DocumentEnvelope, name: str):
+    item = getattr(env.data, name, None)
+    return item.value if isinstance(item, Extracted) else None
+
+
+def _bureau_detail(ctx: Context, name: str):
+    """(value, evidence, source, report date) of one bureau field, or None.
+
+    The profile's BureauScore wins (a score pulled from a bureau is the authority). Otherwise the newest
+    uploaded report that states the field: a commercial-only report has no consumer score, so it never
+    reaches SmeProfile.bureau and has to be read directly."""
+    bureau = ctx.profile.bureau
+    value = getattr(bureau, name, None) if bureau is not None else None
+    if value is not None:
+        return value, (), bureau.source, bureau.as_of
+    reports = sorted(_usable(ctx, DocumentType.BUREAU_REPORT), key=lambda e: (_field_value(e, "report_date") or date.min, e.uploaded_at))
+    for env in reversed(reports):
+        value = _field_value(env, name)
+        if value is not None:
+            return value, (_ref(env, f"data.{name}"),), "self_declared", _field_value(env, "report_date")
+    return None
+
+
+def _bureau_note(ctx: Context, source: str, as_of: date | None) -> str | None:
+    notes = []
+    if source != "bureau":
+        notes.append(f"bureau details are {source.replace('_', ' ')}, not pulled from a bureau")
+    if as_of is not None and (ctx.as_of - as_of).days > BUREAU_STALE_DAYS:
+        notes.append(f"the report is {(ctx.as_of - as_of).days} days old")
+    return "; ".join(notes) or None
+
+
+def _bureau_waits(name: str) -> str:
+    return f"bureau_report.{name} (uploaded report) or SmeProfile.bureau.{name}"
+
+
+def cmr_rank(ctx: Context) -> Feature | Unavailable:
+    got = _bureau_detail(ctx, "cmr_rank")
+    if got is None or not 1 <= got[0] <= 10:
+        return Unavailable("No CIBIL MSME Rank (1 to 10) has been provided.", _bureau_waits("cmr_rank"))
+    rank, evidence, source, as_of = got
+    return Feature(rank, f"CIBIL MSME Rank {rank} (1 is best)", evidence, _bureau_note(ctx, source, as_of))
+
+
+def worst_dpd_24m(ctx: Context) -> Feature | Unavailable:
+    got = _bureau_detail(ctx, "max_dpd_24m")
+    if got is None or got[0] < 0:
+        return Unavailable("The report does not state the worst days past due.", _bureau_waits("max_dpd_24m"))
+    days, evidence, source, as_of = got
+    return Feature(days, f"Worst delay in the last 24 months was {days} days past due", evidence, _bureau_note(ctx, source, as_of))
+
+
+def enquiries_90d(ctx: Context) -> Feature | Unavailable:
+    got = _bureau_detail(ctx, "enquiries_90d")
+    if got is None or got[0] < 0:
+        return Unavailable("The report does not state the number of recent credit enquiries.", _bureau_waits("enquiries_90d"))
+    count, evidence, source, as_of = got
+    return Feature(count, f"{count} credit enquiries in the last 90 days", evidence, _bureau_note(ctx, source, as_of))
+
+
+def adverse_flags(ctx: Context) -> Feature | Unavailable:
+    """Either flag set is the worst band. 'Clean' needs both flags stated and false: a missing flag is not a clean one."""
+    known = [d for d in (_bureau_detail(ctx, n) for n in ("written_off_or_settled", "suit_filed_or_wilful_default")) if d is not None]
+    flagged = sum(1 for d in known if d[0] is True)
+    if flagged == 0 and len(known) < 2:
+        return Unavailable("The report does not state both the write-off / settlement and the suit-filed / wilful-default flags.",
+                           "bureau_report.written_off_or_settled and suit_filed_or_wilful_default")
+    evidence = _dedupe(ref for d in known for ref in d[1])
+    text = "No write-off, settlement, suit or wilful-default flag on the report" if flagged == 0 else "A write-off, settlement, suit or wilful-default flag is reported"
+    return Feature(flagged, text, evidence, _bureau_note(ctx, known[0][2], known[0][3]))
+
+
+# ---- financial statements ----
+
+
+def _statement(ctx: Context) -> DocumentEnvelope | None:
+    """The latest financial year; years are never mixed."""
+    return max(_usable(ctx, DocumentType.FINANCIAL_STATEMENTS), key=lambda e: (str(_field_value(e, "financial_year") or ""), e.uploaded_at), default=None)
+
+
+def _statement_note(env: DocumentEnvelope) -> str | None:
+    return None if _field_value(env, "audit_status") in ("audited", "ca_certified") else "the financial figures are provisional or their audit status is unknown"
+
+
+def _statement_refs(env: DocumentEnvelope, *names: str) -> tuple[EvidenceRef, ...]:
+    return tuple(_ref(env, f"data.{n}") for n in names)
+
+
+def revenue_growth(ctx: Context) -> Feature | Unavailable:
+    env = _statement(ctx)
+    if env is None:
+        return _need("financial_statements", "data.revenue, data.prior_revenue")
+    revenue, prior = _field_value(env, "revenue"), _field_value(env, "prior_revenue")
+    if revenue is None or prior is None:
+        return Unavailable("Revenue for both years is needed.", "document financial_statements (revenue, prior_revenue)")
+    if prior <= 0:
+        return Unavailable("The previous year's revenue is zero or negative, so growth has no meaning.", "document financial_statements (prior_revenue > 0)")
+    growth = round(revenue / prior - 1, 3)
+    return Feature(growth, f"Revenue {'grew' if growth >= 0 else 'fell'} {abs(growth):.0%} against the previous year",
+                   _statement_refs(env, "revenue", "prior_revenue"), _statement_note(env))
+
+
+def net_margin(ctx: Context) -> Feature | Unavailable:
+    env = _statement(ctx)
+    if env is None:
+        return _need("financial_statements", "data.profit_after_tax, data.revenue")
+    profit, revenue = _field_value(env, "profit_after_tax"), _field_value(env, "revenue")
+    if profit is None or revenue is None or revenue <= 0:
+        return Unavailable("Profit after tax and a positive revenue are needed.", "document financial_statements (profit_after_tax, revenue > 0)")
+    margin = round(profit / revenue, 3)
+    return Feature(margin, f"Net profit margin of {margin:.1%}", _statement_refs(env, "profit_after_tax", "revenue"), _statement_note(env))
+
+
+def leverage(ctx: Context) -> Feature | Unavailable:
+    env = _statement(ctx)
+    if env is None:
+        return _need("financial_statements", "data.long_term_borrowings, short_term_borrowings, net_worth")
+    long_term, short_term, worth = (_field_value(env, n) for n in ("long_term_borrowings", "short_term_borrowings", "net_worth"))
+    if None not in (long_term, short_term, worth):
+        refs = _statement_refs(env, "long_term_borrowings", "short_term_borrowings", "net_worth")
+        if worth <= 0:
+            # A negative denominator would otherwise land in the best band.
+            return Feature(99.0, "Net worth is zero or negative, so borrowings cannot be set against it", refs, _statement_note(env))
+        ratio = round((long_term + short_term) / worth, 2)
+        return Feature(ratio, f"Borrowings are {ratio:.1f} times net worth", refs, _statement_note(env))
+    reported = _field_value(env, "debt_to_equity")
+    if reported is None or not 0 <= reported < 50:
+        return Unavailable("Both kinds of borrowing and net worth (or a debt-to-equity ratio) are needed.", "document financial_statements (long_term_borrowings, short_term_borrowings, net_worth)")
+    return Feature(round(reported, 2), f"Debt to equity of {reported:.1f}, as reported", _statement_refs(env, "debt_to_equity"), _statement_note(env))
+
+
+def dscr(ctx: Context) -> Feature | Unavailable:
+    env = _statement(ctx)
+    if env is None:
+        return _need("financial_statements", "data.profit_after_tax, depreciation, interest_expense, principal_repayments")
+    profit, depreciation, interest, principal = (_field_value(env, n) for n in ("profit_after_tax", "depreciation", "interest_expense", "principal_repayments"))
+    if None not in (profit, depreciation, interest, principal):
+        service = principal + interest
+        if service <= 0:
+            return Unavailable("The year shows no debt service (no principal or interest), so coverage is not defined.", "document financial_statements (principal_repayments, interest_expense)")
+        ratio = round((profit + depreciation + interest) / service, 2)
+        return Feature(ratio, f"Cash profit covers debt service {ratio:.2f} times",
+                       _statement_refs(env, "profit_after_tax", "depreciation", "interest_expense", "principal_repayments"), _statement_note(env))
+    reported = _field_value(env, "dscr")
+    if reported is None or not 0 <= reported < 50:
+        return Unavailable("Profit, depreciation, interest and principal repayments (or a DSCR) are needed.", "document financial_statements (dscr or its components)")
+    return Feature(round(reported, 2), f"Debt service coverage of {reported:.2f}, as reported", _statement_refs(env, "dscr"), _statement_note(env))
+
+
+# ---- sanction letters ----
+
+
+def _facility_kind(text: str | None) -> str:
+    """Closed list only. The free text of a sanction letter can carry a business name, so it must never be echoed."""
+    t = (text or "").lower()
+    if "overdraft" in t or re.search(r"\bod\b", t):
+        return "overdraft"
+    if "cash credit" in t or "cash-credit" in t or re.search(r"\bcc\b", t):
+        return "cash_credit"
+    if "working capital" in t:
+        return "working_capital"
+    if "term" in t:
+        return "term_loan"
+    return "other"
+
+
+def od_utilisation(ctx: Context) -> Feature | Unavailable:
+    letters = [e for e in _usable(ctx, DocumentType.SANCTION_LETTER)
+               if _facility_kind(_field_value(e, "facility_type")) in ("overdraft", "cash_credit") and (_field_value(e, "sanctioned_amount") or 0) > 0]
+    if not letters:
+        return Unavailable("No overdraft or cash-credit sanction letter with an amount has been provided.", "document sanction_letter (facility_type, sanctioned_amount)")
+    letter = max(letters, key=lambda e: (_field_value(e, "sanction_date") or date.min, e.uploaded_at))
+    env = _bank_env(ctx)
+    if env is None:
+        return _need("bank_statement", "data.transactions")
+    if not any(t.balance is not None and t.balance < 0 for t in env.data.transactions):
+        # Utilisation of 0% would read as a strength when the statement may simply be another account.
+        return Unavailable("The statement never goes into overdraft, so it cannot be tied to the overdraft account.", "bank statement of the overdraft account (negative balances)")
+    days = _daily_balances(env)
+    if not days:
+        return Unavailable("Most statement rows print no running balance, so daily balances can't be rebuilt.", "document bank_statement: a running balance on most rows")
+    limit = _field_value(letter, "sanctioned_amount")
+    ratio = round(statistics.fmean(max(0.0, -b) for b in days) / limit, 3)
+    refs = (_ref(letter, "data.sanctioned_amount"), _ref(letter, "data.facility_type"), *_bank_refs(env))
+    return Feature(ratio, f"The overdraft was used to {ratio:.0%} of its {inr(limit)} limit on average", refs)
+
+
+def margin_facility(ctx: Context) -> Feature | Unavailable:
+    known = [(e, _field_value(e, "fd_lien_or_margin")) for e in _usable(ctx, DocumentType.SANCTION_LETTER)]
+    known = [(e, v) for e, v in known if v is not None]
+    if not known:
+        return Unavailable("No sanction letter states whether a facility is secured by a fixed-deposit lien or cash margin.", "document sanction_letter (fd_lien_or_margin)")
+    margined = [e for e, v in known if v is True]
+    if margined:
+        return Feature("cash_margined", "A facility is secured by a fixed-deposit lien or full cash margin",
+                       _dedupe(_ref(e, "data.fd_lien_or_margin") for e in margined))
+    return Feature("not_margined", "No facility is fully cash-margined", _dedupe(_ref(e, "data.fd_lien_or_margin") for e, _ in known))
+
+
+def facility_trend(ctx: Context) -> Feature | Unavailable:
+    """Compare the two newest sanctions of the same facility type: all letters are read, not only the latest."""
+    groups: dict[str, list[tuple[date, float, DocumentEnvelope]]] = {}
+    for env in _usable(ctx, DocumentType.SANCTION_LETTER):
+        when, amount = _field_value(env, "sanction_date"), _field_value(env, "sanctioned_amount")
+        kind = _facility_kind(_field_value(env, "facility_type"))
+        if kind != "other" and when is not None and amount is not None and amount > 0:  # unrecognised types can't be compared
+            groups.setdefault(kind, []).append((when, amount, env))
+    series = {kind: sorted(rows, key=lambda r: r[0]) for kind, rows in groups.items() if len(rows) >= 2}
+    if not series:
+        return Unavailable("Two sanction letters of the same facility type, with dates and amounts, are needed.", "documents sanction_letter for the last two renewals (sanctioned_amount, sanction_date)")
+    kind = max(series, key=lambda k: series[k][-1][0])
+    (_, before, old), (_, after, new) = series[kind][-2:]
+    ratio = after / before
+    token = "increased" if ratio > 1.02 else "decreased" if ratio < 0.98 else "same"
+    verb = {"increased": "rose to", "decreased": "fell to", "same": "stayed at"}[token]
+    refs = _dedupe([_ref(old, "data.sanctioned_amount"), _ref(new, "data.sanctioned_amount")])
+    return Feature(token, f"The {kind.replace('_', ' ')} limit {verb} {inr(after)} from {inr(before)} at the last renewal", refs)
+
+
+# ---- settlement report ----
+
+
+def pg_settlements(ctx: Context) -> Feature | Unavailable:
+    """Settlement net / bank business credits over the months both cover. A consistency check: a business that
+    sells mostly in cash has a low ratio and that is fine; settlements ABOVE the bank inflow are what need explaining."""
+    nets: dict[str, tuple[float, str]] = {}
+    for env in _usable(ctx, DocumentType.SETTLEMENT_REPORT):
+        for month in env.data.months:
+            nets[month.month] = (month.net, env.document_id)  # later uploads win, as for GSTR-3B
+    if not nets:
+        return _need("settlement_report", "data.months")
+    bank = _bank_env(ctx)
+    if bank is None:
+        return _need("bank_statement", "data.transactions")
+    credits = bank_credits_by_month(ctx.docs)
+    common = sorted(set(nets) & set(credits))
+    total = sum(credits[m] for m in common)
+    if len(common) < 2 or total <= 0:
+        return Unavailable("At least 2 months must appear in both the settlement report and the bank statement.", "settlement_report and bank_statement covering the same 2 or more months")
+    ratio = round(sum(nets[m][0] for m in common) / total, 3)
+    refs = _dedupe([*(EvidenceRef(document_id=nets[m][1], field="data.months") for m in common), *_bank_refs(bank)])
+    return Feature(ratio, f"Payment-aggregator settlements are {ratio:.0%} of bank inflow over {len(common)} months", refs)

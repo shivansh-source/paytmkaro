@@ -36,9 +36,10 @@ def test_summary_claims_match_registry_and_config():
     assert s["total_weight"] == sum(cfg.parameters[p.id].weight for p in REGISTRY if in_base(p))
     assert s["computable_weight"] == sum(cfg.parameters[p.id].weight for p in REGISTRY if p.computable)
     assert s["pending_weight_in_base"] == sum(cfg.parameters[p.id].weight for p in pending if in_base(p))
-    ref = [p for p in pending if cfg.parameters[p.id].weight_source == "reference"]
-    assert s["reference_pending"] == len(ref) == 11
-    assert s["reference_pending_weight"] == sum(cfg.parameters[p.id].weight for p in ref) == 18
+    ref = [p for p in REGISTRY if cfg.parameters[p.id].weight_source == "reference"]
+    assert s["reference_total"] == len(ref) == 11
+    assert s["reference_total_weight"] == sum(cfg.parameters[p.id].weight for p in ref) == 18
+    assert s["reference_computable"] == sum(p.computable for p in ref) == 3
     assert s["outside_weight_base"] == sum(not in_base(p) for p in REGISTRY) == 1
     assert s["total_weight"] == s["computable_weight"] + s["pending_weight_in_base"]
 

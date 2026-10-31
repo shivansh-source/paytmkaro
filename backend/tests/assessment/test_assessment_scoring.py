@@ -84,7 +84,7 @@ def test_pending_parameters_name_their_missing_field_or_document(which):
 
 def test_registry_level_counts():
     computable = [p for p in REGISTRY if p.computable]
-    assert len(REGISTRY) == 51 and len(computable) == 27 and len(REGISTRY) - len(computable) == 24
+    assert len(REGISTRY) == 51 and len(computable) == 39 and len(REGISTRY) - len(computable) == 12
 
 
 # ---- coverage math ---------------------------------------------------------------------------------

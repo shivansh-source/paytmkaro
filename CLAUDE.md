@@ -402,9 +402,18 @@ Lender-facing **indicative** `ScoreCard`: `score_sme(profile, validated_document
 - Only 11 weights come from the reference scorecard; the other 40 are **uncalibrated placeholders**. Say
   "indicative" in any UI or pitch.
 - Field lock keeps personal identifiers out of the feature table; age, state and pincode are never scored.
-- Not shown in the lender UI yet. Many pending parameters need schema additions proposed in
-  DESIGN.md §7 (bureau report details, financial statements, sanction letter, settlement report,
-  hashed counterparty key): these touch `SmeProfile` / `DocumentEnvelope`, so agree as a team first.
+- Not shown in the lender UI yet.
+- **39 of the 51 parameters are computable.** Twelve of them read the bureau report (CMR, worst DPD,
+  enquiries, adverse flags), financial statements (growth, margin, leverage, DSCR), sanction letter
+  (overdraft use, FD-margin, facility trend) and settlement report; the samples carry none of these, so for
+  them those twelve show as pending ("waiting for the document"). Coverage: samples 45%, samples plus those
+  four documents about 71%, the most any borrower can reach about 82%. An unverified (uploaded) bureau report
+  counts at half weight; provisional financials too.
+- The 12 still pending need document types we lack (rent agreement, licence, EPFO/ESIC, net-worth statement,
+  asset register, a hashed counterparty key on `Transaction`) or inputs no document gives (sector rating,
+  interviews, CRM data). Those would touch `SmeProfile` / `DocumentEnvelope`: agree as a team first.
+- Fairness-flagged parameters (never headlined as a strength or concern): constitution, Udyam size class,
+  turnover scale, cash share, and now net margin and FD-margin facility. A loss still lowers the index.
 
 ## Landing page (`frontend/`)
 
