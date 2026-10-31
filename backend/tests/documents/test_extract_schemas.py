@@ -22,7 +22,7 @@ def test_schema_file_matches_models(document_type):
 def test_required_and_prompted_fields_exist_in_model(document_type):
     model_fields = set(FIELD_MODELS[document_type].model_fields)
     assert set(REQUIRED[document_type]) <= model_fields
-    assert {k for k in FIELDS[document_type] if k != "periods"} <= model_fields
+    assert {k for k in FIELDS[document_type] if k not in {"periods", "accounts", "settlements", "<amount>"}} <= model_fields
 
 
 def test_every_extractable_type_has_a_schema():

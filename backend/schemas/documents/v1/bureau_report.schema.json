@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Credit Bureau Report Extraction Schema v1",
+  "type": "object",
+  "required": [
+    "bureau_name",
+    "report_date"
+  ],
+  "properties": {
+    "bureau_name": {
+      "enum": [
+        "cibil",
+        "experian",
+        "equifax",
+        "crif"
+      ],
+      "type": "string"
+    },
+    "report_date": {
+      "format": "date",
+      "type": "string"
+    },
+    "pan_masked": {
+      "pattern": "^X{6}[0-9]{3}[A-Z]$",
+      "type": "string"
+    },
+    "score": {
+      "maximum": 900,
+      "minimum": 300,
+      "type": "integer"
+    },
+    "no_credit_history": {
+      "type": "boolean"
+    },
+    "score_type": {
+      "maxLength": 300,
+      "minLength": 2,
+      "type": "string"
+    },
+    "cmr_rank": {
+      "maximum": 10,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "active_accounts": {
+      "maximum": 100000,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "total_outstanding": {
+      "minimum": 0,
+      "type": "number"
+    },
+    "overdue_amount": {
+      "minimum": 0,
+      "type": "number"
+    },
+    "max_dpd_24m": {
+      "maximum": 999,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "written_off_or_settled": {
+      "type": "boolean"
+    },
+    "suit_filed_or_wilful_default": {
+      "type": "boolean"
+    },
+    "enquiries_90d": {
+      "maximum": 100000,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "accounts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "lender"
+        ],
+        "properties": {
+          "lender": {
+            "maxLength": 160,
+            "minLength": 2,
+            "pattern": "^[A-Za-z0-9\\u0900-\\u0DFF][A-Za-z0-9\\u0900-\\u0DFF .,'&()/-]*$",
+            "type": "string"
+          },
+          "account_type": {
+            "maxLength": 300,
+            "minLength": 2,
+            "type": "string"
+          },
+          "status": {
+            "maxLength": 300,
+            "minLength": 2,
+            "type": "string"
+          },
+          "account_last4": {
+            "pattern": "^[0-9]{4}$",
+            "type": "string"
+          },
+          "sanctioned": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "outstanding": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "emi": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "dpd_max": {
+            "maximum": 999,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "dpd_summary": {
+            "maxLength": 300,
+            "minLength": 2,
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "text_layer",
+              "ocr",
+              "vlm"
+            ],
+            "type": "string"
+          },
+          "page_index": {
+            "type": "integer"
+          },
+          "confidence": {
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          }
+        }
+      }
+    }
+  }
+}

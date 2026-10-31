@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Merchant Settlement Report Extraction Schema v1",
+  "type": "object",
+  "required": [
+    "period_from",
+    "period_to"
+  ],
+  "properties": {
+    "provider": {
+      "maxLength": 160,
+      "minLength": 2,
+      "pattern": "^[A-Za-z0-9\\u0900-\\u0DFF][A-Za-z0-9\\u0900-\\u0DFF .,'&()/-]*$",
+      "type": "string"
+    },
+    "merchant_id_last4": {
+      "pattern": "^[0-9]{4}$",
+      "type": "string"
+    },
+    "period_from": {
+      "format": "date",
+      "type": "string"
+    },
+    "period_to": {
+      "format": "date",
+      "type": "string"
+    },
+    "total_gross": {
+      "minimum": 0,
+      "type": "number"
+    },
+    "total_fees": {
+      "minimum": 0,
+      "type": "number"
+    },
+    "total_net": {
+      "minimum": 0,
+      "type": "number"
+    },
+    "fee_pct": {
+      "minimum": 0,
+      "type": "number"
+    },
+    "transaction_count": {
+      "maximum": 100000,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "months_covered": {
+      "maximum": 100000,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "missing_months": {
+      "items": {
+        "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$",
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "settlements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "date",
+          "gross_amount"
+        ],
+        "properties": {
+          "date": {
+            "format": "date",
+            "type": "string"
+          },
+          "gross_amount": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "fees": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "net_settled": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "txn_count": {
+            "maximum": 100000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "mode": {
+            "maxLength": 30,
+            "minLength": 1,
+            "type": "string"
+          },
+          "net_ok": {
+            "type": "boolean"
+          },
+          "source": {
+            "enum": [
+              "text_layer",
+              "ocr",
+              "vlm"
+            ],
+            "type": "string"
+          },
+          "page_index": {
+            "type": "integer"
+          },
+          "confidence": {
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          }
+        }
+      }
+    },
+    "monthly": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "month",
+          "gross",
+          "fees",
+          "net",
+          "fee_pct"
+        ],
+        "properties": {
+          "month": {
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$",
+            "type": "string"
+          },
+          "gross": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "fees": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "net": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "fee_pct": {
+            "type": "number"
+          },
+          "txn_count": {
+            "type": "integer"
+          }
+        }
+      }
+    }
+  }
+}

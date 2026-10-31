@@ -11,6 +11,10 @@ MAX_GAP = 2  # at most this many unknown pages are absorbed between two same-typ
 CONTEXT_FACTOR = 0.8  # a page labelled from its neighbours gets this share of their confidence
 
 UNKNOWN = DocumentType.UNKNOWN
+# Types that run over many pages whose continuation pages can be blank or rows-only. Other
+# types (ID cards, certificates, letters) are one or two pages, so a gap is not assumed to
+# belong to them.
+CONTINUABLE = {DocumentType.BANK_STATEMENT, DocumentType.SETTLEMENT_REPORT, DocumentType.FINANCIAL_STATEMENTS}
 
 
 @dataclass
@@ -55,7 +59,13 @@ def fill_from_context(decisions: list[Decision], scores: list[PageScore]) -> Non
             j += 1
         left = decisions[i - 1] if i > 0 else None
         right = decisions[j + 1] if j + 1 < n else None
-        if left and right and left.doc_type == right.doc_type and j - i + 1 <= MAX_GAP:
+        if (
+            left
+            and right
+            and left.doc_type == right.doc_type
+            and left.doc_type in CONTINUABLE
+            and j - i + 1 <= MAX_GAP
+        ):
             # Only pages with no evidence, or evidence for the same type, are absorbed; a
             # page pointing elsewhere stays unknown so the VLM can look at it.
             neutral = all(scores[k].best_score == 0 or scores[k].best == left.doc_type for k in range(i, j + 1))

@@ -84,18 +84,30 @@ def _corroborated_confidence(rule_score: float) -> float:
 
 
 def vlm_fallback(
-    decisions: list[Decision], scores: list[PageScore], images: dict[int, bytes], vlm: VlmClient
+    decisions: list[Decision],
+    scores: list[PageScore],
+    images: dict[int, bytes],
+    vlm: VlmClient,
+    budget: object | None = None,
 ) -> tuple[int, list[str]]:
     """Ask the VLM about still-unknown pages that have an image; mutate their decisions.
-    Returns (requests made, warnings). VLM failures leave the rules result untouched."""
+    Returns (requests made, warnings). VLM failures leave the rules result untouched.
+
+    `budget` is an optional shared pool (see app.documents.vlm.budget.VlmBudget), duck-typed:
+    `spend() -> bool` takes one request (False when empty) and an optional `drain()` empties
+    it after a rate limit. Without one, config.VLM_MAX_REQUESTS_PER_DOCUMENT applies."""
     warnings: list[str] = []
     todo = [d for d in decisions if d.doc_type is DocumentType.UNKNOWN and d.page_index in images]
     batches = [todo[i : i + IMAGES_PER_REQUEST] for i in range(0, len(todo), IMAGES_PER_REQUEST)]
-    budget = max(0, config.VLM_MAX_REQUESTS_PER_DOCUMENT)
+    local_limit = max(0, config.VLM_MAX_REQUESTS_PER_DOCUMENT)
     by_index = {s.page_index: s for s in scores}
     requests = 0
     for b, batch in enumerate(batches):
-        if requests >= budget:
+        if budget is not None:
+            out_of_requests = not budget.spend()  # type: ignore[attr-defined]
+        else:
+            out_of_requests = requests >= local_limit
+        if out_of_requests:
             for d in (d for rest in batches[b:] for d in rest):
                 d.signals.append("vlm: not asked (per-document request limit reached)")
             warnings.append("VLM request limit for this document reached; remaining pages kept as unknown")
@@ -106,6 +118,8 @@ def vlm_fallback(
                 PROMPT.format(n=len(batch)), [images[d.page_index] for d in batch], max_tokens=VLM_MAX_TOKENS
             )
         except VlmBudgetExceeded:
+            if budget is not None and hasattr(budget, "drain"):
+                budget.drain()  # type: ignore[attr-defined]
             for d in (d for rest in batches[b:] for d in rest):
                 d.signals.append("vlm: not available (rate limit or budget reached)")
             warnings.append("VLM rate limit or budget exhausted; rules result kept")
