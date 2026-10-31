@@ -535,6 +535,76 @@ a.step-link:hover {
   cursor: pointer;
 }
 
+.file-drop.is-reading {
+  border-style: solid;
+  border-color: rgba(242, 181, 68, 0.5);
+  color: var(--ink);
+  animation: reading-pulse 1.4s ease-in-out infinite;
+}
+
+.file-drop.is-reading input {
+  cursor: progress;
+}
+
+@keyframes reading-pulse {
+  50% {
+    border-color: rgba(242, 181, 68, 0.15);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .file-drop.is-reading {
+    animation: none;
+  }
+}
+
+.upload-notes {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.upload-notes li + li {
+  margin-top: 6px;
+}
+
+.upload-notes.is-error li:first-child {
+  color: #ff8a7a;
+}
+
+.upload-password {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.upload-password p {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 12.5px;
+}
+
+.upload-password input {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  outline: none;
+  background: rgba(5, 5, 7, 0.6);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+}
+
+.upload-password input:focus {
+  border-color: var(--gold);
+}
+
 /* ---------- Review ---------- */
 
 .check-icon {

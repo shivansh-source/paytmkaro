@@ -14,6 +14,9 @@ from app.validation.text import compare_addresses, compare_names
         ("RAVI KUMAR", "R. KUMAR", CheckStatus.WARN),
         ("RAVI KUMAR", "RAVI KUMAAR", CheckStatus.WARN),
         ("RAVI KUMAR", "SUNITA SHARMA", CheckStatus.FAIL),
+        ("R.KUMAR", "R. KUMAR (KUMAR TRADERS)", CheckStatus.PASS),  # OCR drops the space; bank adds the business
+        ("RAVI KUMAR", "R. KUMAR (KUMAR TRADERS)", CheckStatus.WARN),
+        ("RAVI KUMAR", "SUNITA SHARMA (KUMAR TRADERS)", CheckStatus.FAIL),
     ],
 )
 def test_name_matching(a, b, expected):

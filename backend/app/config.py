@@ -25,6 +25,9 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GROQ_BASE_URL = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
 GROQ_VLM_MODEL = os.getenv("GROQ_VLM_MODEL", "qwen/qwen3.8-27b")
 VLM_MAX_REQUESTS_PER_DOCUMENT = int(os.getenv("VLM_MAX_REQUESTS_PER_DOCUMENT", "3"))
+# Page images reach the hosted VLM only after OCR has found and blacked out Aadhaar numbers. Without OCR
+# (PaddleOCR not installed) the VLM is off for uploads unless this is set to 1, knowingly.
+VLM_WITHOUT_OCR = os.getenv("VLM_WITHOUT_OCR", "0") == "1"
 
 # LLM for understanding free-typed answers (questionnaire): Sarvam, built for Indian languages.
 # Key goes in backend/.env as SARVAM_API_KEY; without it the questionnaire falls back to rules + chips.

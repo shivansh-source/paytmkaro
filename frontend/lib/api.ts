@@ -4,6 +4,7 @@ import type {
   AssessBody,
   Assessment,
   DecisionBody,
+  DocumentType,
   Interpretation,
   LenderProduct,
   LoanRequest,
@@ -13,13 +14,17 @@ import type {
   Profile,
   QuestionnaireAnswers,
   SampleApplicant,
-  SortOrder
+  SortOrder,
+  UploadResult
 } from "./types";
 
 const BASE = "/api/v1";
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(BASE + path, { ...init, headers: { "Content-Type": "application/json" } });
+  return read<T>(await fetch(BASE + path, { ...init, headers: { "Content-Type": "application/json" } }));
+}
+
+async function read<T>(response: Response): Promise<T> {
   if (!response.ok) {
     let detail = (await response.text()).slice(0, 300);
     try {
@@ -35,6 +40,15 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
 const post = (body: unknown): RequestInit => ({ method: "POST", body: JSON.stringify(body) });
 
 export const api = {
+  // Multipart, so no JSON content type: the browser sets the form boundary.
+  upload: async (file: File, smeId: string, documentType?: DocumentType, password?: string) => {
+    const form = new FormData();
+    form.append("file", file);
+    form.append("sme_id", smeId);
+    if (documentType) form.append("document_type", documentType);
+    if (password) form.append("password", password);
+    return read<UploadResult>(await fetch(BASE + "/documents", { method: "POST", body: form }));
+  },
   sample: (id: "a" | "b") => call<SampleApplicant>(`/samples/${id}`),
   assess: (body: AssessBody) => call<Assessment>("/assess", post(body)),
   match: (profile: Profile, request: LoanRequest, sort: SortOrder) =>
