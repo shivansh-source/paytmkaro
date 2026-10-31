@@ -56,8 +56,9 @@ interface MsmeContext extends MsmeState {
   reset: () => void;
 }
 
-// One saved dashboard per account (mobile number), so a new account on the same browser starts clean.
-const storageKey = () => `creditsetu.msme.${(readSession()?.mobile ?? "").replace(/\D/g, "") || "demo"}`;
+// The dashboard is saved on the server per account (PUT /v1/progress), so it follows the account to any
+// device; localStorage keeps a per-account copy for instant loads and offline refreshes.
+const storageKey = () => `creditsetu.msme.${readSession()?.accountId ?? "demo"}`;
 const INITIAL: MsmeState = {
   questionnaire: null,
   sampleLabel: null,
@@ -71,10 +72,19 @@ const INITIAL: MsmeState = {
 
 const Context = createContext<MsmeContext | null>(null);
 
-// One id per signed-in mobile number, so uploads and applications from the same SME line up.
-function smeId(): string {
-  const digits = (readSession()?.mobile ?? "").replace(/\D/g, "");
-  return digits ? `SME-${digits}` : "SME-DEMO";
+// The signed-in account's id is the sme_id the server stores documents and applications under.
+const smeId = () => readSession()?.accountId ?? "SME-DEMO";
+
+// A refresh mid-read loses the request: show those slots as needing the file again.
+function restore(saved: Partial<MsmeState>): MsmeState {
+  const restored: MsmeState = { ...INITIAL, ...saved };
+  for (const slot of Object.values(restored.uploads)) {
+    if (slot && (slot.state === "reading" || slot.state === "password")) {
+      slot.state = "error";
+      slot.message = "The page was reloaded before this finished. Please choose the file again.";
+    }
+  }
+  return restored;
 }
 
 // New envelopes replace earlier ones of the same type; GSTR-3B uploads add months instead.
@@ -97,32 +107,36 @@ export function MsmeProvider({ children }: { children: ReactNode }) {
   const files = useRef<Partial<Record<DocumentType, File>>>({}); // kept in memory for a password retry
 
   useEffect(() => {
-    try {
-      key.current = storageKey();
-      const saved = window.localStorage.getItem(key.current);
-      if (saved) {
-        const restored: MsmeState = { ...INITIAL, ...JSON.parse(saved) };
-        // A refresh mid-read loses the request: show those slots as needing the file again.
-        for (const slot of Object.values(restored.uploads)) {
-          if (slot && (slot.state === "reading" || slot.state === "password")) {
-            slot.state = "error";
-            slot.message = "The page was reloaded before this finished. Please choose the file again.";
-          }
-        }
-        if (!restored.sampleLabel) {
-          uploaded.current = restored.assessBody?.documents ?? [];
-          uploadedBureau.current = restored.assessBody?.bureau ?? null;
-        }
-        setState(restored);
+    const apply = (restored: MsmeState) => {
+      if (!restored.sampleLabel) {
+        uploaded.current = restored.assessBody?.documents ?? [];
+        uploadedBureau.current = restored.assessBody?.bureau ?? null;
       }
+      setState(restored);
+    };
+    key.current = storageKey();
+    try {
+      const saved = window.localStorage.getItem(key.current);
+      if (saved) apply(restore(JSON.parse(saved)));
     } catch {
-      /* corrupt storage: start fresh */
+      /* corrupt storage: the server copy (below) or a fresh start */
     }
-    setReady(true);
+    // The server copy wins: it may come from another device.
+    api
+      .progress()
+      .then((server) => {
+        if (server) apply(restore(server as Partial<MsmeState>));
+      })
+      .catch(() => undefined) // offline or signed out: keep the local copy
+      .finally(() => setReady(true));
   }, []);
 
   useEffect(() => {
-    if (ready) window.localStorage.setItem(key.current, JSON.stringify(state));
+    if (!ready) return;
+    window.localStorage.setItem(key.current, JSON.stringify(state));
+    // Save to the server shortly after changes settle (not on every keystroke of the loan amount).
+    const timer = window.setTimeout(() => api.saveProgress(state).catch(() => undefined), 800);
+    return () => window.clearTimeout(timer);
   }, [state, ready]);
 
   const run = useCallback(async (task: () => Promise<void>) => {
@@ -140,7 +154,7 @@ export function MsmeProvider({ children }: { children: ReactNode }) {
   const loadSample = useCallback(
     (id: "a" | "b") =>
       run(async () => {
-        const sample = await api.sample(id);
+        const sample = await api.loadSample(id); // becomes this account's stored file on the server
         const { label, ...rest } = sample;
         const told = state.questionnaire && state.questionnaire !== "skipped" ? state.questionnaire.answers : null;
         const body = {
@@ -167,7 +181,7 @@ export function MsmeProvider({ children }: { children: ReactNode }) {
       setSlot(slot, { ...blank, state: "reading" });
       setError(null);
       try {
-        const result = await api.upload(file, smeId(), slot, password);
+        const result = await api.upload(file, slot, password);
         if (result.status === "password_required") {
           setSlot(slot, { ...blank, state: "password", message: result.message });
           return;

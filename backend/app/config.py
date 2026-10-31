@@ -35,3 +35,23 @@ SARVAM_API_KEY = os.getenv("SARVAM_API_KEY")
 SARVAM_BASE_URL = os.getenv("SARVAM_BASE_URL", "https://api.sarvam.ai/v1")
 SARVAM_CHAT_MODEL = os.getenv("SARVAM_CHAT_MODEL", "sarvam-105b-conversations")
 SARVAM_TIMEOUT_SECONDS = float(os.getenv("SARVAM_TIMEOUT_SECONDS", "15"))
+
+# ---- Storage and deployment -------------------------------------------------------------------------
+# Database: Supabase Postgres in production (DATABASE_URL, the "Session pooler" URI), a local SQLite file
+# otherwise. CREDITSETU_DB overrides the SQLite path (tests use a temp file).
+DATABASE_URL = os.getenv("DATABASE_URL")
+SQLITE_PATH = Path(os.getenv("CREDITSETU_DB", DATA_DIR / "creditsetu.sqlite3"))
+# Uploaded files: Supabase Storage when SUPABASE_URL + SUPABASE_SERVICE_KEY are set, else a local folder.
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")  # service_role key: server-side only, never the browser
+SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "documents")
+UPLOADS_DIR = Path(os.getenv("CREDITSETU_UPLOADS", DATA_DIR / "uploads"))
+# Encryption at rest for uploaded files, extracted documents, progress and applications. Any long random
+# string; required when CREDITSETU_ENV=production. Changing it makes stored data unreadable.
+CREDITSETU_ENV = os.getenv("CREDITSETU_ENV", "development")
+CREDITSETU_SECRET = os.getenv("CREDITSETU_SECRET")
+SESSION_DAYS = int(os.getenv("SESSION_DAYS", "14"))
+# Browser origins allowed to call the API directly (the Vercel URL), comma-separated. Not needed when the
+# frontend proxies /api/v1 (local dev).
+CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()]
+SEED_DEMO = os.getenv("CREDITSETU_SEED", "1") == "1"

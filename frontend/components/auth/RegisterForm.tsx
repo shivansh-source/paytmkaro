@@ -47,11 +47,17 @@ export function RegisterForm({ initialRole }: { initialRole: Role | null }) {
     setStep("otp");
   };
 
-  const verify = (e: FormEvent) => {
+  const verify = async (e: FormEvent) => {
     e.preventDefault();
     if (otp !== DEMO_OTP || !role) return setError("That code doesn't match. For the demo, use 123456.");
-    writeSession({ role, name: name.trim(), organisation: organisation.trim(), mobile, signedInAt: new Date().toISOString() });
-    router.push(homeFor(role));
+    setError(null);
+    try {
+      const { token, account } = await api.login({ role, name: name.trim(), organisation: organisation.trim(), mobile, otp });
+      writeSession({ ...account, accountId: account.id, token, signedInAt: new Date().toISOString() });
+      router.push(homeFor(role));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not sign in. Is the backend running?");
+    }
   };
 
   return (
@@ -78,7 +84,8 @@ export function RegisterForm({ initialRole }: { initialRole: Role | null }) {
               type="button"
               className="link-button"
               onClick={() => {
-                clearSession(); // that account's saved work stays, under its own mobile number
+                api.logout().catch(() => undefined); // that account's saved work stays on the server
+                clearSession();
                 setCurrent(null);
               }}
             >

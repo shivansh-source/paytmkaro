@@ -5,7 +5,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
 import { BridgeMark } from "../BridgeMark";
-import { clearSession, readSession, type Session } from "../../lib/session";
+import { signOut } from "../../lib/api";
+import { readSession, type Session } from "../../lib/session";
 
 const SessionContext = createContext<Session | null>(null);
 
@@ -58,10 +59,7 @@ export function LenderShell({ children }: { children: ReactNode }) {
             <button
               type="button"
               className="link-button"
-              onClick={() => {
-                clearSession();
-                router.push("/");
-              }}
+              onClick={signOut}
             >
               Sign out
             </button>

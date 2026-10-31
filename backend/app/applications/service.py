@@ -6,7 +6,6 @@ import os
 import uuid
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
-from pathlib import Path
 
 from app.applications.models import (
     CONSENT_TEXT,
@@ -19,7 +18,8 @@ from app.applications.models import (
     Event,
 )
 from app.applications.store import ApplicationStore
-from app.config import DATA_DIR
+from app import config
+from app.schemas import DocumentEnvelope
 from app.recommendation import evaluate, load_lender_products, match_input
 from app.schemas.profile import LoanRequest
 from app.scoring import assess
@@ -45,7 +45,10 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def submit(store: ApplicationStore, body: ApplyRequest, *, at: datetime | None = None) -> Application:
+def submit(store: ApplicationStore, body: ApplyRequest, *, documents: list[DocumentEnvelope] | None = None,
+           at: datetime | None = None) -> Application:
+    """`documents`: the SME's stored file (the route passes app.workspace.for_application). Only the demo
+    seed omits it and uses body.documents."""
     if not body.consent_accepted:
         raise ApplicationError(422, "Consent is required to share your file with a lender")
     product = next((p for p in load_lender_products() if p.id == body.product_id), None)
@@ -53,7 +56,7 @@ def submit(store: ApplicationStore, body: ApplyRequest, *, at: datetime | None =
         raise ApplicationError(404, f"Unknown lender product '{body.product_id}'")
 
     # Recompute everything server-side: the lender only ever sees what our checks produced.
-    assessment = assess(body.sme_id, body.documents, bureau=body.bureau, sector=body.sector, as_of=body.as_of)
+    assessment = assess(body.sme_id, documents if documents is not None else body.documents, bureau=body.bureau, sector=body.sector, as_of=body.as_of)
     request = LoanRequest(**{**body.request.model_dump(), "sme_id": body.sme_id})
     verdict = evaluate(match_input(assessment.profile, request), product)
     if verdict.status != "matched":
@@ -146,8 +149,11 @@ def seed_demo(store: ApplicationStore) -> None:
 
 @lru_cache(maxsize=1)
 def get_store() -> ApplicationStore:
-    """The app-wide store. CREDITSETU_DB overrides the file (tests point it at a temp dir)."""
-    store = ApplicationStore(Path(os.environ.get("CREDITSETU_DB", DATA_DIR / "creditsetu.sqlite3")))
-    if os.environ.get("CREDITSETU_SEED", "1") == "1":
+    """The app-wide store on the shared database (app.storage.get_db). Seeds the demo inbox unless
+    CREDITSETU_SEED=0 (tests)."""
+    from app.storage import get_db
+
+    store = ApplicationStore(get_db())
+    if os.environ.get("CREDITSETU_SEED", "1" if config.SEED_DEMO else "0") == "1":
         seed_demo(store)
     return store

@@ -4,6 +4,9 @@ __pycache__/
 .venv/
 .pytest_cache/
 *.sqlite3
+*.sqlite3.bak
+# Uploaded files when running without Supabase (encrypted, but still never committed)
+backend/data/uploads/
 
 # Node / Next.js
 node_modules/

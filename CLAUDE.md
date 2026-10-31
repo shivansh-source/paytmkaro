@@ -70,7 +70,11 @@ backend/                 FastAPI (Python 3.13)
     questionnaire/       pre-qualification: self-declared answers → estimates, preview, checklist;
                          understand.py reads free-typed answers (rules, then Sarvam)
     llm/                 LLM clients (Sarvam). Human-facing only: understanding / explaining, never deciding
-    applications/        MSME → lender applications (SQLite), consent, decisions, demo seed
+    applications/        MSME → lender applications, consent, decisions, demo seed
+    storage/             database (Supabase Postgres or SQLite), file store (Supabase Storage or a folder),
+                         encryption at rest (crypto.py)
+    accounts/            mock-OTP login → account + session token (hash stored)
+    workspace/           an MSME's server-side file: stored documents, progress, documents for an application
     documents/           ingest / classify / extract pipeline (OCR, VLM, privacy masking);
                          extract/envelope.py = the bridge to DocumentEnvelope, process.py = one upload end to end
     assessment/          indicative lender ScoreCard (51-parameter registry, DESIGN.md)
@@ -165,15 +169,17 @@ started (stopping a background `npx next start` can leave an orphaned `node` hol
 
 Flow: landing → `/register` (role choice; `?role=lender|msme` pre-selects) → details → mock OTP
 (`123456`, shown on screen) → MSMEs land on `/msme/start` (questionnaire), lenders on `/lender` (lenders
-pick their institution from `/v1/lenders`, so the inbox knows whose applications to show). Session in
-`localStorage` (`lib/session.ts`); no real auth for the hackathon. Opening `/register` while signed in
-shows "You're signed in" with **Continue** or **Use a different account** (never a silent redirect). MSME
-dashboard state is saved per account (`creditsetu.msme.<mobile>`), so a new account starts clean and an
-old one gets its work back on the same browser. Sign-out does a full page load
-(`window.location.assign("/")`), because clearing data makes page guards redirect and race `router.push`.
+pick their institution from `/v1/lenders`, so the inbox knows whose applications to show). Login calls `POST /v1/auth/login` (mock OTP, real session):
+the account is created on first login (`SME-<mobile>` / `LENDER-<mobile>`; an MSME's account id **is** its
+`sme_id`) and the bearer token is kept in `localStorage` (`lib/session.ts`) and sent by `lib/api.ts` on every
+call; a 401 sends the user back to `/register`. Lenders must pick an institution from `lenders.json`. Opening
+`/register` while signed in shows "You're signed in" with **Continue** or **Use a different account** (never
+a silent redirect). Sign-out (`signOut()` in `lib/api.ts`) ends the server session and does a full page load
+(clearing data makes page guards redirect and race `router.push`); the account's work stays on the server.
 
-MSME screens (all client components inside `MsmeProvider`, which persists assessment, request, sort and
-matches to `localStorage`, per account, so a refresh mid-demo is safe):
+MSME screens (all client components inside `MsmeProvider`, which saves the dashboard state (answers, uploads,
+assessment, request, sort, matches) to the server (`PUT /v1/progress`, debounced) and to `localStorage` per
+account; on load the server copy wins, so the account picks up where it left off on any device):
 0. `/msme/start` (sidebar step 1): **questionnaire as a scripted chat**, skippable ("Skip to documents").
    7 questions: sector; business type; start year; yearly sales band; loan amount + tenure + purpose;
    existing EMIs; EMI/cheque bounces in 6 months; which of GST / Udyam / ITR / credit score they have
@@ -234,7 +240,11 @@ client-side navigation. `lib/types.ts` mirrors the backend contracts the UI read
 
 | Method | Path                        | Status                            |
 | ------ | --------------------------- | --------------------------------- |
-| POST   | `/v1/documents`             | multipart `file`, `sme_id`, optional `document_type` (slot hint) + `password` → `ProcessResult`: envelopes, skipped parts with reasons, self-declared `bureau` from an uploaded report, warnings. Always 200; `status` says `password_required` / `nothing_recognised` / … Nothing stored |
+| POST   | `/v1/auth/login`            | `{role, name, organisation, mobile, otp}` → `{token, account}`; also `GET /v1/auth/me`, `POST /v1/auth/logout` |
+| GET/PUT | `/v1/progress`             | (MSME) the saved dashboard state                         |
+| GET/DELETE | `/v1/documents`         | (MSME) the stored documents / start over                 |
+| POST   | `/v1/samples/{a|b}/load`    | (MSME) replace the stored file with a sample applicant   |
+| POST   | `/v1/documents`             | (MSME) multipart `file`, optional `document_type` (slot hint) + `password` → `ProcessResult`: envelopes, skipped parts with reasons, self-declared `bureau` from an uploaded report, warnings. Always 200; `status` says `password_required` / `nothing_recognised` / … Stores the file (encrypted) + envelopes |
 | GET    | `/v1/profile/{sme_id}`      | stub (no storage yet)                                    |
 | POST   | `/v1/assess`                | envelopes → checked documents + `SmeProfile`             |
 | POST   | `/v1/score`                 | same body as `/v1/assess` → indicative `ScoreCard` (`app/assessment`; weights uncalibrated, not used for matching) |
@@ -246,12 +256,16 @@ client-side navigation. `lib/types.ts` mirrors the backend contracts the UI read
 | POST   | `/v1/prequalify`            | questionnaire answers → estimates, likely lenders, document checklist |
 | POST   | `/v1/questionnaire/interpret` | `{step, text}` free-typed answer → validated answer fields (rules, then Sarvam) |
 | POST   | `/v1/applications`          | MSME applies (consent required); server re-runs assess + eligibility |
-| GET    | `/v1/applications`          | `?lender=` inbox or `?sme_id=` an MSME's applications    |
+| GET    | `/v1/applications`          | a lender's own inbox / a business's own applications (from the session) |
 | GET    | `/v1/applications/{id}`     | full application: profile, documents, match, history   |
 | POST   | `/v1/applications/{id}/decision` | lender: start_review / approve_in_principle / request_info (note) / decline (reason) |
 
-Demo flow: `/v1/documents` (per file) → `/v1/assess` → `/v1/match/profile` → `/v1/offers/{id}/explain`. Nothing is persisted yet;
-the client passes the profile back. Storage + `sme_id`-based lookups come later.
+Demo flow: `/v1/auth/login` → `/v1/documents` (per file) → `/v1/assess` → `/v1/match/profile` →
+`/v1/offers/{id}/explain` → `/v1/applications`. Every MSME / lender endpoint needs the bearer token and only
+returns the caller's own data (a business its own file and applications; a lender its institution's inbox).
+`/v1/assess`, `/v1/match*`, `/v1/offers`, `/v1/lenders`, `/v1/samples/{a|b}`, `/v1/prequalify` stay public
+(stateless). Applications are built from the **stored** documents; the browser can only add the SME's
+confirmations (`user_confirmed`).
 
 ## Pipeline: validation → scoring → engine → offers
 
@@ -457,13 +471,23 @@ The demo runs end to end on uploaded files **and** on the built-in sample applic
    `tests/fixtures/make_sample_documents.py` already writes PDFs/images; extend it rather than start over.
 2. **Highlight boxes on the review page:** envelopes now carry `bbox` for OCR'd fields, but the review page
    doesn't show the document image yet (needs the page image served or returned with the upload).
-3. **Store uploads server-side** (encrypted): today envelopes live in the browser and are sent back to
-   `/v1/assess` and `/v1/applications`. Applications should reference stored document ids so a browser can't
-   alter what lenders see. Pairs with the encryption item.
+3. Done: uploads stored server-side and encrypted (see "Storage and deployment").
 4. WIP commit `1e8640c` (five new document types in classify / extract) was flagged "unreviewed": review it
    before relying on it. Those types are read but skipped at upload ("not used in your score yet").
 5. Aadhaar address is often not read (seen on the e-Aadhaar fixture): check the extractor.
-6. Discussed, not built: mock **Account Aggregator** (bank data by consent, no OCR) and mock **DigiLocker**
+6. **OCR on table-style scans** (found with a 16-file synthetic reference pack: two-column "Label | Value"
+   tables, mild skew, image-only PDFs). Postponed; findings so far:
+   - Values print top-aligned and labels centred, so their centres are ~17 px apart and `_ocr_rows`
+     (`extract/common.py`) puts them on different rows: every label then picks up the *next* row's value
+     (GST legal name = trade name, Udyam name = "Enterprise Type…", address = "NIC Activity Code…"). Fix that
+     worked: also join a box to the row when they share >= 40% of the shorter box's height.
+   - The recogniser drops a character at a tightly cropped edge (GSTIN read as 14 chars). Fix that worked:
+     widen each crop by 0.3 x box height on both sides in `ocr/__init__.py::_crop`.
+   - With both: PAN, Aadhaar, GSTIN, names, ITR and Udyam fields all read correctly. Still missing: GST
+     constitution and address under labels "3. Constitution" / "4. Principal Place of Business"; a two-line
+     Aadhaar address; GSTR-3B month row ("Tax Period: April 2026" + a 3.1(a) table row); bank transaction rows,
+     IFSC read as "DEM00001234" (O→0) and "Rs658,000.00" parsed as 0; bureau score printed big in a box.
+7. Discussed, not built: mock **Account Aggregator** (bank data by consent, no OCR) and mock **DigiLocker**
    (PAN / Aadhaar / GST pulled verified), both feeding `/v1/assess` directly; **encryption at rest** for stored
    uploads and the applications DB; **Docker** compose for backend + frontend.
 
@@ -483,6 +507,27 @@ The demo runs end to end on uploaded files **and** on the built-in sample applic
 - Native-speaker check of Hindi / Kannada / Tamil copy; favicon; mobile pass; demo script.
 - Open decisions: final product name; hosted vs self-hosted VLM and the privacy answer; fee numbers
   (suggested: success fee 1–2%, lead fee ~₹300–500, SaaS ~₹25–50k/mo).
+
+## Storage and deployment
+
+- **Database:** `app/storage/db.py`, SQLAlchemy Core, tables `accounts`, `sessions` (token hash only),
+  `documents` (encrypted envelope JSON + `file_key`), `progress` (encrypted), `applications` (encrypted body;
+  lender / sme_id / status plain for lookups). Tables are created on startup (no migration tool).
+  `DATABASE_URL` set → Supabase Postgres; unset → SQLite at `backend/data/creditsetu.sqlite3`.
+- **Files:** `app/storage/files.py`: Supabase Storage (private bucket `documents`, created on first start)
+  when `SUPABASE_URL` + `SUPABASE_SERVICE_KEY` are set, else `backend/data/uploads/`. Encrypted either way.
+- **Encryption:** `CREDITSETU_SECRET` (any long random string; required when `CREDITSETU_ENV=production`,
+  never change it once data exists). Locally a fixed development key is used, with a warning.
+- **Tests** never touch Supabase: `tests/conftest.py` blanks the Supabase settings and gives every test its
+  own SQLite file and uploads folder; `sign_in(client, role, mobile, organisation)` returns auth headers.
+- **Supabase setup:** create a project; put in `backend/.env` (never in chat or git): `DATABASE_URL` (Connect →
+  **Session pooler** URI, IPv4, with the DB password), `SUPABASE_URL` (`https://<ref>.supabase.co`),
+  `SUPABASE_SERVICE_KEY` (service_role / secret key: server only), `CREDITSETU_SECRET`. Supabase's GitHub
+  integration is not used (it is for `supabase/` migration folders).
+- **Deploy (when needed):** backend = `backend/Dockerfile` on Render via `render.yaml` (free plan: no OCR, so
+  digital PDFs only; `WITH_OCR=1` + a 2 GB plan for photos). Frontend = Vercel with root `frontend` and
+  `NEXT_PUBLIC_API_URL=https://<render-app>/v1`; set `CORS_ORIGINS` on Render to the Vercel URL. Locally the
+  frontend proxies `/api/v1` instead. `requirements-base.txt` = everything but OCR; `requirements.txt` adds OCR.
 
 ## Working agreements
 
