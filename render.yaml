@@ -1,0 +1,31 @@
+# Render blueprint for the CreditSetu API (frontend is on Vercel). New > Blueprint > this repo.
+# Secrets marked sync: false are entered in the Render dashboard, never committed.
+services:
+  - type: web
+    name: creditsetu-api
+    runtime: docker
+    region: singapore     # next to the Supabase database (ap-southeast-1)
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    plan: free            # 512 MB: digital PDFs only. For photos/scans: plan standard (2 GB) + WITH_OCR=1 below.
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: CREDITSETU_ENV
+        value: production
+      - key: CREDITSETU_SECRET          # SAME value as backend/.env: data in the shared Supabase is encrypted with it
+        sync: false
+      - key: DATABASE_URL               # Supabase > Connect > Session pooler URI (IPv4)
+        sync: false
+      - key: SUPABASE_URL               # https://<project>.supabase.co
+        sync: false
+      - key: SUPABASE_SERVICE_KEY       # Supabase > Project settings > API keys > service_role (secret)
+        sync: false
+      - key: CORS_ORIGINS               # the Vercel URL, e.g. https://creditsetu.vercel.app
+        sync: false
+      - key: SARVAM_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: CREDITSETU_SEED            # demo applications in the lender inbox
+        value: "1"

@@ -126,7 +126,8 @@ class ApplyRequest(BaseModel):
     """Same inputs as /v1/assess plus the loan request, the product and explicit consent."""
 
     sme_id: str
-    documents: list[DocumentEnvelope]
+    # Only the SME's confirmations (user_confirmed) are taken from these; the file itself is the stored one.
+    documents: list[DocumentEnvelope] = []
     bureau: BureauScore | None = None
     sector: str | None = None
     as_of: date | None = None

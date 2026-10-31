@@ -5,13 +5,14 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { BridgeMark } from "../BridgeMark";
-import { clearSession, readSession, type Session } from "../../lib/session";
+import { signOut } from "../../lib/api";
+import { readSession, type Session } from "../../lib/session";
 import { useMsme } from "./MsmeProvider";
 
 export function Shell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { assessment, matches, sampleLabel, questionnaire, reset } = useMsme();
+  const { assessment, matches, sampleLabel, questionnaire } = useMsme();
   const [session, setSession] = useState<Session | null>(null);
 
   useEffect(() => {
@@ -30,13 +31,6 @@ export function Shell({ children }: { children: ReactNode }) {
     { href: "/msme/applications", label: "Applications", done: false, locked: !assessment }
   ];
 
-  const signOut = () => {
-    clearSession();
-    reset();
-    // Full navigation, not router.push: clearing the data makes the current page's
-    // "no assessment -> go to upload" guard fire, which would win a client-side race.
-    window.location.assign("/");
-  };
 
   if (!session) return null;
 

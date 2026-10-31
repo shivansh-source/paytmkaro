@@ -1,17 +1,5 @@
-fastapi==0.116.1
-uvicorn==0.33.0
-python-dotenv==1.2.4
-python-multipart==0.0.32
-httpx==0.28.1
+-r requirements-base.txt
 
-# Document ingest
-pypdfium2==5.14.0
-pillow==13.0.0
-pillow-heif==1.8.1
-python-docx==1.2.0
-openpyxl==3.1.5
-xlrd==2.0.2
-
-# OCR (CPU). On Windows run with enable_mkldnn=False: oneDNN crashes on Paddle 3.3.
+# OCR (CPU, ~1 GB). Photos and scans need it. On Windows run with enable_mkldnn=False: oneDNN crashes on Paddle 3.3.
 paddlepaddle==3.3.1
 paddleocr==3.7.0

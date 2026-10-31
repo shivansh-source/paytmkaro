@@ -1,4 +1,5 @@
-// Demo session: mobile + mock OTP, stored in localStorage. No real authentication for the hackathon.
+// Session: mock OTP (123456), but a real server session. The token from POST /v1/auth/login goes with every
+// API call; the account and its documents live on the server, so they work on any device.
 
 export type Role = "msme" | "lender";
 
@@ -8,6 +9,8 @@ export interface Session {
   organisation: string;
   mobile: string;
   signedInAt: string;
+  token: string; // bearer token for the API
+  accountId: string; // SME-<mobile> / LENDER-<mobile>; an MSME's id is its sme_id
 }
 
 const KEY = "creditsetu.session";
@@ -15,7 +18,8 @@ const KEY = "creditsetu.session";
 export function readSession(): Session | null {
   if (typeof window === "undefined") return null;
   try {
-    return JSON.parse(window.localStorage.getItem(KEY) ?? "null");
+    const session = JSON.parse(window.localStorage.getItem(KEY) ?? "null");
+    return session?.token ? session : null; // sessions saved before server login count as signed out
   } catch {
     return null;
   }
