@@ -44,8 +44,10 @@ def test_reference_weights_are_exactly_the_eleven_documented_ones():
     reference = {pid: pc.weight for pid, pc in cfg.parameters.items() if pc.weight_source == "reference"}
     assert reference == REFERENCE_PENDING_WEIGHTS
     assert sorted(reference.values(), reverse=True) == [3, 3, 3, 2, 1, 1, 1, 1, 1, 1, 1]
-    # and all of them are pending by schema
-    assert all(not p.computable for p in REGISTRY if p.id in reference)
+    # Three of the eleven can be computed now that the bureau report and sanction letter have envelopes;
+    # the other eight still wait for something no document supplies (or for a document type we lack).
+    now_computable = {p.id for p in REGISTRY if p.id in reference and p.computable}
+    assert now_computable == {"bc.margin_facility", "bc.facility_trend", "rb.adverse_flags"}
 
 
 def test_computable_parameters_have_bands_that_cover_every_value():

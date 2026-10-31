@@ -100,11 +100,19 @@ def test_registry_never_reads_protected_or_identifier_source_fields():
 
 def test_review_flags_are_set_on_structural_parameters():
     flagged = {p.id for p in REGISTRY if p.review_flag}
-    assert flagged == {"cp.constitution", "cp.msme_category", "bc.turnover_scale", "bc.cash_credit_share"}
-    # and the warning travels with the score to the lender
+    assert flagged == {
+        "cp.constitution", "cp.msme_category", "bc.turnover_scale", "bc.cash_credit_share",  # structural
+        "fn.net_margin",  # margins differ by trade; traders are legitimately thin
+        "bc.margin_facility",  # FD-backed overdrafts are common for small firms with no other collateral
+    }
+    # and the warning travels with the score to the lender. It is attached when the parameter is scored; the two
+    # that read the newer documents are pending for the samples, so they are checked in test_assessment_new_documents.
     rows = {r.id: r for r in card("A").parameters}
     for pid in flagged:
-        assert any(f.startswith("Fairness review:") for f in rows[pid].flags), pid
+        if rows[pid].status == "computed":
+            assert any(f.startswith("Fairness review:") for f in rows[pid].flags), pid
+        else:
+            assert pid in {"fn.net_margin", "bc.margin_facility"}, pid
 
 
 @pytest.mark.parametrize("which", ["A", "B"])
