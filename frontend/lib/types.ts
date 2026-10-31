@@ -292,3 +292,43 @@ export interface DecisionBody {
   reason?: DeclineReason;
   note?: string;
 }
+
+// ---- Pre-qualification questionnaire (self-declared, before upload) ----
+
+export interface QuestionnaireAnswers {
+  sector: "retail" | "trading" | "manufacturing" | "services" | "food" | "other";
+  constitution: "proprietorship" | "partnership" | "llp" | "pvt_ltd" | "not_sure";
+  started_year: number;
+  started_month: number;
+  annual_sales: "under_10l" | "10l_25l" | "25l_1cr" | "over_1cr";
+  loan_amount: number;
+  tenure_months: number;
+  purpose: string;
+  existing_emi_monthly: number;
+  bounces_6m: "none" | "1_2" | "3_plus" | "not_sure";
+  has_gst: boolean;
+  has_udyam: boolean;
+  has_itr: boolean;
+  credit_score: number | null;
+}
+
+export interface ChecklistItem {
+  document_type: DocumentType;
+  status: "required" | "recommended" | "optional" | "not_needed";
+  why: string;
+}
+
+export interface Prequalification {
+  estimates: { business_vintage_months: number; annual_turnover: number; foir: number | null; bounces_6m: number | null };
+  matches: MatchResult[];
+  checklist: ChecklistItem[];
+  notes: string[];
+}
+
+export interface Interpretation {
+  updates: Partial<QuestionnaireAnswers>;
+  understood: string | null;
+  answered_step: boolean;
+  source: "rules" | "ai" | "none";
+  message: string | null;
+}

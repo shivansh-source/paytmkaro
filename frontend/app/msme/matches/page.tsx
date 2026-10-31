@@ -126,7 +126,7 @@ export default function MatchesPage() {
 
   return (
     <>
-      <PageHeader eyebrow="Step 4 of 5" title="Lenders for your business">
+      <PageHeader eyebrow="Step 5 of 6" title="Lenders for your business">
         We checked your verified file against every lender&apos;s rules. You see all of them: the ones you match, and
         exactly what to change for the rest.
       </PageHeader>

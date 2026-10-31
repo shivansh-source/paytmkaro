@@ -43,7 +43,7 @@ export default function ReviewPage() {
 
   return (
     <>
-      <PageHeader eyebrow="Step 2 of 5" title="What we checked">
+      <PageHeader eyebrow="Step 3 of 6" title="What we checked">
         {problems === 0
           ? "Every document is consistent with the others. Nothing for you to fix here."
           : `${problems} thing${problems > 1 ? "s" : ""} need your attention before lenders see your file.`}

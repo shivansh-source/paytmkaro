@@ -1497,6 +1497,267 @@ button.btn-decline:not(.btn-solid):hover {
   border-color: rgba(242, 181, 68, 0.45);
 }
 
+/* ---------- MSME: questionnaire chat ---------- */
+
+.chat-page {
+  max-width: 760px;
+}
+
+.chat-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.chat-top h1 {
+  margin: 0;
+  font-size: clamp(30px, 3.6vw, 44px);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+
+.chat-top .eyebrow {
+  margin-bottom: 10px;
+}
+
+.chat {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bubble {
+  max-width: 82%;
+  padding: 14px 18px;
+  border-radius: 18px;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.bubble.bot {
+  align-self: flex-start;
+  border: 1px solid var(--line);
+  border-bottom-left-radius: 6px;
+  background: rgba(244, 239, 230, 0.04);
+}
+
+.bubble.you {
+  align-self: flex-end;
+  border-bottom-right-radius: 6px;
+  background: var(--gold);
+  color: #111;
+}
+
+.bubble-hint {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.bubble.result {
+  display: grid;
+  gap: 12px;
+  max-width: 100%;
+  width: 100%;
+}
+
+.typing {
+  display: flex;
+  gap: 5px;
+  padding: 16px 18px;
+}
+
+.typing i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--muted);
+  animation: blink 1s infinite;
+}
+
+.typing i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.typing i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.answer {
+  display: grid;
+  gap: 12px;
+  justify-items: end;
+  margin-top: 4px;
+}
+
+.progress-note {
+  justify-self: end;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.bubble .chips {
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.chip {
+  padding: 10px 16px;
+  border: 1px solid rgba(242, 181, 68, 0.5);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.chip:hover,
+.chip.on {
+  background: rgba(242, 181, 68, 0.16);
+}
+
+.chip.primary {
+  background: var(--gold);
+  color: #111;
+}
+
+.chat-number {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.chat-number .money-input {
+  width: 240px;
+}
+
+.chat-number input {
+  width: 100%;
+  padding: 11px 12px;
+  outline: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+}
+
+.chat-text {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  max-width: 560px;
+}
+
+.chat-text input {
+  flex: 1;
+  padding: 11px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  outline: none;
+  background: rgba(5, 5, 7, 0.6);
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+}
+
+.chat-text input:focus {
+  border-color: var(--gold);
+}
+
+.prequal-list,
+.checklist {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.prequal-list li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.checklist li {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  font-size: 15px;
+}
+
+.checklist .pill {
+  justify-self: start;
+  font-size: 11px;
+}
+
+.checklist strong {
+  font-weight: 500;
+}
+
+.ck-not_needed {
+  opacity: 0.55;
+}
+
+.need {
+  justify-self: start;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.need-required {
+  background: rgba(242, 181, 68, 0.15);
+  color: var(--gold);
+}
+
+.need-recommended {
+  background: rgba(255, 196, 92, 0.12);
+  color: #ffc45c;
+}
+
+.need-optional,
+.need-not_needed {
+  background: rgba(244, 239, 230, 0.07);
+  color: var(--muted);
+}
+
+.doc-card.not-needed {
+  opacity: 0.5;
+}
+
+.page-lede a {
+  color: var(--gold);
+}
+
 /* ---------- Small screens ---------- */
 
 @media (max-width: 900px) {
