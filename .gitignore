@@ -21,3 +21,6 @@ frontend/movies/
 *.docx
 # ...but test fixtures must be committed
 !backend/tests/fixtures/**/*.docx
+
+# TypeScript incremental build cache
+*.tsbuildinfo

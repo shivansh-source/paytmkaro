@@ -67,6 +67,11 @@ backend/                 FastAPI (Python 3.13)
     recommendation/      lender matching engine + "not yet" fixes
     offers/              KFS math: EMI, schedule, fees, true APR
     samples/             synthetic Applicants A and B as DocumentEnvelopes
+    questionnaire/       pre-qualification: self-declared answers → estimates, preview, checklist;
+                         understand.py reads free-typed answers (rules, then Sarvam)
+    llm/                 LLM clients (Sarvam). Human-facing only: understanding / explaining, never deciding
+    applications/        MSME → lender applications (SQLite), consent, decisions, demo seed
+    documents/           Lakshya's ingest / classify / extract pipeline (OCR, VLM)
   data/
     lenders.json         mock lender products (edit freely; re-read on every request)
     sample_profiles/     MatchInput fixtures: applicant_a.json (clean), applicant_b.json (messy)
@@ -107,6 +112,15 @@ npm run build                         # must pass before committing
 The dashboard calls `/api/v1/*`, which `next.config.mjs` rewrites to FastAPI (`BACKEND_URL`, default
 `http://localhost:8000`), so run the backend alongside the frontend. No CORS setup needed.
 
+**AI keys** live in `backend/.env` (git-ignored, loaded by `app/config.py`): `SARVAM_API_KEY` (free-text
+questionnaire), `GROQ_API_KEY` (Lakshya's VLM). Never paste keys in chat or commit them. Tests never call a
+real model: `tests/conftest.py` blanks `SARVAM_API_KEY`, and `tests/test_understand.py` injects a fake.
+Principle for any new AI feature: **AI reads and explains; code computes and decides.**
+
+Gotchas seen so far: `uvicorn --reload` on Windows sometimes misses **new** files (new routes 404 until a
+restart); React effects must not return values (`useEffect(() => el.scrollIntoView())` crashes in newer
+Chrome, which returns a Promise there: wrap the body in braces).
+
 The dev machine is Windows; Bash (Git Bash) and PowerShell are both available. Port 3000 is often taken
 by the user's own dev server: use another port (e.g. 3100) for test runs, and kill only processes you
 started (stopping a background `npx next start` can leave an orphaned `node` holding the port).
@@ -114,12 +128,33 @@ started (stopping a background `npx next start` can leave an orphaned `node` hol
 ## Login + MSME dashboard (`frontend/app/register`, `frontend/app/msme`)
 
 Flow: landing → `/register` (role choice; `?role=lender|msme` pre-selects) → details → mock OTP
-(`123456`, shown on screen) → `/msme/upload` or `/lender`. Session in `localStorage`
-(`lib/session.ts`); no real auth for the hackathon.
+(`123456`, shown on screen) → MSMEs land on `/msme/start` (questionnaire), lenders on `/lender` (lenders
+pick their institution from `/v1/lenders`, so the inbox knows whose applications to show). Session in
+`localStorage` (`lib/session.ts`); no real auth for the hackathon. Sign-out does a full page load
+(`window.location.assign("/")`), because clearing data makes page guards redirect and race `router.push`.
 
 MSME screens (all client components inside `MsmeProvider`, which persists assessment, request, sort and
 matches to `localStorage` so a refresh mid-demo is safe):
-1. `/msme/upload`: 6 required documents + optional ITR-V. Extraction isn't wired yet, so a chosen file
+0. `/msme/start` (sidebar step 1): **questionnaire as a scripted chat**, skippable ("Skip to documents").
+   7 questions: sector; business type; start year; yearly sales band; loan amount + tenure + purpose;
+   existing EMIs; EMI/cheque bounces in 6 months; which of GST / Udyam / ITR / credit score they have
+   (score asked only if they know it). `POST /v1/prequalify` (`backend/app/questionnaire/`) turns answers
+   into **conservative** estimates (lower bound of the sales band; "not sure" stays unknown), a "likely
+   lenders" preview from the same engine (labelled as an estimate), and a personalised checklist
+   (no GST → GST documents "not needed"; no Udyam → "recommended, free online"). Answers set the loan
+   request, the sector, and a **self-declared** bureau score for the assessment.
+   **Free text:** under every question users can type in English, Hindi or Hinglish
+   ("main kirana dukaan chalata hoon, teen saal se, 5 lakh chahiye"). `POST /v1/questionnaire/interpret`
+   (`app/questionnaire/understand.py`): mask PAN / long digit runs → deterministic rules for short answers
+   ("5 lakh", "2022", "koi loan nahi") → otherwise **Sarvam** (`sarvam-105b-conversations`, json_schema
+   structured output). Guardrails, all tested: the model only *copies* facts (each EMI separately, sales +
+   period, years in business) and **code does all arithmetic**; every rupee amount must appear in the
+   user's own digits (grounding: a "20k"→2000 slip is dropped); answers for *other* questions are kept only
+   if the text mentions that topic, and a "none/zero/no" for them needs an explicit "no" (models invent
+   "no loans, no bounces"); values are range-checked; nothing is guessed. The chat echoes "Got it: …" and
+   skips questions already answered. No key / Sarvam down → rules + chips still work.
+1. `/msme/upload`: 6 required documents + optional ITR-V, marked required / recommended / optional /
+   not needed from the questionnaire (link to the questionnaire if it was never opened). Extraction isn't wired yet, so a chosen file
    shows "received, waiting for extraction"; **"Load sample applicant A / B"** runs the real pipeline
    via `GET /v1/samples/{a|b}` → `POST /v1/assess`.
 2. `/msme/review`: cross-checks (name warning has "Yes, same person", which sets `user_confirmed` and
@@ -132,7 +167,18 @@ matches to `localStorage` so a refresh mid-demo is safe):
    never a probability), fixes on "not yet" cards, **Apply** on amount quick fixes.
 5. `/msme/offer/[id]`: KFS: amount received, EMI, total payable, cost of credit, true APR vs quoted rate,
    fees + GST, cooling-off, best/worst case, schedule.
-`/lender` is a placeholder; the lender screen is next.
+6. `/msme/offer/[id]` also has **Apply** (consent checkbox → `POST /v1/applications`); `/msme/applications`
+   shows each lender's status and decision message ("Not yet" always carries a reason).
+
+Lender screens (`frontend/app/lender`, `LenderShell` guards the lender role): **inbox** (counts, filters,
+readiness ring, red flags / warnings, fit, true APR, status), **application page** (flagged checks,
+cash flow with evidence links that jump to `#field-{doc}-{field}`, fit against the lender's own rules,
+EMI / true APR / FOIR after this loan, identity, read-only `DocumentCard`s, consent, history, decision
+panel; opening a new application marks it in review), **Your criteria** (read-only lender products).
+Applications use their own server-side profile: `submit()` re-runs `assess()` on the documents, so a
+browser can't edit what lenders see. Demo seed: 3 applications under `SEED-A` / `SEED-B` (so live demos
+with SAMPLE-A / SAMPLE-B start clean); DB file `backend/data/creditsetu.sqlite3` (git-ignored;
+`CREDITSETU_DB`, `CREDITSETU_SEED=0` in tests via `tests/conftest.py`).
 
 Styles: `app/dashboard.css` reuses the landing palette and fonts; calmer motion (one fade-in, the
 dial). Anything that could collide with landing classes is scoped under `.shell` / `.auth`, and the
@@ -152,6 +198,12 @@ client-side navigation. `lib/types.ts` mirrors the backend contracts the UI read
 | GET    | `/v1/lenders`               | lender products                                          |
 | GET    | `/v1/offers/{id}/explain`   | `?amount=&tenure_months=` → KFS numbers                  |
 | GET    | `/v1/samples/{a|b}`         | sample applicant as a ready `/v1/assess` body            |
+| POST   | `/v1/prequalify`            | questionnaire answers → estimates, likely lenders, document checklist |
+| POST   | `/v1/questionnaire/interpret` | `{step, text}` free-typed answer → validated answer fields (rules, then Sarvam) |
+| POST   | `/v1/applications`          | MSME applies (consent required); server re-runs assess + eligibility |
+| GET    | `/v1/applications`          | `?lender=` inbox or `?sme_id=` an MSME's applications    |
+| GET    | `/v1/applications/{id}`     | full application: profile, documents, match, history   |
+| POST   | `/v1/applications/{id}/decision` | lender: start_review / approve_in_principle / request_info (note) / decline (reason) |
 
 Demo flow: `/v1/assess` → `/v1/match/profile` → `/v1/offers/{id}/explain`. Nothing is persisted yet;
 the client passes the profile back. Storage + `sme_id`-based lookups come later.

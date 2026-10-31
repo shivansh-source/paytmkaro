@@ -25,3 +25,10 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GROQ_BASE_URL = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
 GROQ_VLM_MODEL = os.getenv("GROQ_VLM_MODEL", "qwen/qwen3.8-27b")
 VLM_MAX_REQUESTS_PER_DOCUMENT = int(os.getenv("VLM_MAX_REQUESTS_PER_DOCUMENT", "3"))
+
+# LLM for understanding free-typed answers (questionnaire): Sarvam, built for Indian languages.
+# Key goes in backend/.env as SARVAM_API_KEY; without it the questionnaire falls back to rules + chips.
+SARVAM_API_KEY = os.getenv("SARVAM_API_KEY")
+SARVAM_BASE_URL = os.getenv("SARVAM_BASE_URL", "https://api.sarvam.ai/v1")
+SARVAM_CHAT_MODEL = os.getenv("SARVAM_CHAT_MODEL", "sarvam-105b-conversations")
+SARVAM_TIMEOUT_SECONDS = float(os.getenv("SARVAM_TIMEOUT_SECONDS", "15"))

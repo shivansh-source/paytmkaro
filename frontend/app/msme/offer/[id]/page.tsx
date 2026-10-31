@@ -47,7 +47,7 @@ export default function OfferPage() {
 
   return (
     <>
-      <PageHeader eyebrow="Step 5 of 5 · Key Fact Statement" title={`${offer.lender}: ${offer.product}`}>
+      <PageHeader eyebrow="Step 6 of 6 · Key Fact Statement" title={`${offer.lender}: ${offer.product}`}>
         The full cost of this loan in plain numbers, before you apply.
       </PageHeader>
 

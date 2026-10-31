@@ -50,7 +50,7 @@ export default function ReadinessPage() {
 
   return (
     <>
-      <PageHeader eyebrow="Step 3 of 5" title="Your credit-readiness score" />
+      <PageHeader eyebrow="Step 4 of 6" title="Your credit-readiness score" />
 
       <section className={`panel score-hero band-${readiness.band} fade-in`}>
         <ScoreDial score={readiness.score} />

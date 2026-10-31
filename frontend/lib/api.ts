@@ -4,11 +4,14 @@ import type {
   AssessBody,
   Assessment,
   DecisionBody,
+  Interpretation,
   LenderProduct,
   LoanRequest,
   MatchResult,
   OfferEstimate,
+  Prequalification,
   Profile,
+  QuestionnaireAnswers,
   SampleApplicant,
   SortOrder
 } from "./types";
@@ -39,6 +42,8 @@ export const api = {
   offer: (productId: string, amount: number, tenureMonths: number) =>
     call<OfferEstimate>(`/offers/${encodeURIComponent(productId)}/explain?amount=${amount}&tenure_months=${tenureMonths}`),
   lenders: () => call<LenderProduct[]>("/lenders"),
+  prequalify: (answers: QuestionnaireAnswers) => call<Prequalification>("/prequalify", post({ answers })),
+  interpret: (step: string, text: string) => call<Interpretation>("/questionnaire/interpret", post({ step, text })),
   apply: (body: AssessBody & { request: LoanRequest; product_id: string; consent_accepted: boolean }) =>
     call<Application>("/applications", post(body)),
   applications: (filter: { lender?: string; sme_id?: string }) =>
