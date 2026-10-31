@@ -11,6 +11,7 @@ from datetime import date
 from typing import Any
 
 from app.documents.extract.common import (
+    _TO_ALPHA,
     DATE_PATTERN,
     Hit,
     Line,
@@ -36,6 +37,7 @@ _HOLDER_LABEL = re.compile(r"(?:account|a/c|customer)\s*(?:holder'?s?\s*)?name|^
 _HEADER_STOP = re.compile(r"account\s*(?:no|number|type)|a/c\s*no|ifsc|branch|address|period|statement|customer\s*id|currency", I)
 _ACCOUNT_LABEL = re.compile(r"(?:account|a/c)\s*(?:no|number|#)\.?", I)
 _ACCOUNT_VALUE = re.compile(r"[X*x\d][X*x\d\s-]{4,}\d{4}")
+_TO_ZERO = str.maketrans({"O": "0", "D": "0", "Q": "0"})
 _IFSC = re.compile(r"\b[A-Z]{4}0[A-Z0-9]{6}\b")
 _PERIOD = re.compile(rf"({DATE_PATTERN})\s*(?:to|till|-|–)\s*({DATE_PATTERN})", I)
 _FOOTER = re.compile(r"opening\s*balance|closing\s*balance|total|page\s*\d|statement|generated|end of|\*\*|computer", I)
@@ -58,6 +60,8 @@ def read_header(view: PageView, read: PageRead) -> None:
         if m := _IFSC.search(line.text.upper()):
             read.put("ifsc", Hit(m.group(0), line.confidence))
             break
+    if "ifsc" not in read.fields:
+        read.put("ifsc", _repaired_ifsc(lines))
     account = after_label(lines, _ACCOUNT_LABEL, _ACCOUNT_VALUE, ahead=1)
     if account:
         # Only the last 4 digits are kept; the full number never enters the result.
@@ -69,6 +73,28 @@ def read_header(view: PageView, read: PageRead) -> None:
             break
     read.put("opening_balance", _balance_after(lines, re.compile(r"opening\s*balance", I)))
     read.put("closing_balance", _balance_after(lines, re.compile(r"closing\s*balance", I)))
+
+
+_IFSC_LABELLED = re.compile(r"\bIFSC(?:\s*code)?\b\s*[:.\-–]?\s*([A-Z0-9]{11})\b", I)
+
+
+def repair_ifsc(raw: str) -> str:
+    """IFSC = 4 letters, the digit 0, then 6 letters/digits. Fixes letter/digit swaps in the first
+    five positions only (DEM00001234 -> DEMO0001234); the last six are free, so they are left as read."""
+    s = re.sub(r"[^A-Z0-9]", "", raw.upper())
+    if len(s) != 11:
+        return s
+    return s[:4].translate(_TO_ALPHA) + s[4:5].translate(_TO_ZERO) + s[5:]
+
+
+def _repaired_ifsc(lines: list[Line]) -> Hit | None:
+    """Only next to an 'IFSC' label: an 11-character token elsewhere on the page proves nothing."""
+    for line in lines:
+        if m := _IFSC_LABELLED.search(line.text.upper()):
+            fixed = repair_ifsc(m.group(1))
+            if fixed != m.group(1) and _IFSC.fullmatch(fixed):
+                return Hit(fixed, min(line.confidence, 0.6), f"OCR letter/digit swaps corrected from {m.group(1)}")
+    return None
 
 
 def _balance_after(lines: list[Line], label: re.Pattern[str]) -> Hit | None:
@@ -237,6 +263,11 @@ def resolve_rows(rows: list[dict[str, Any]], opening: float | None) -> tuple[lis
         for key in ("debit", "credit"):
             if out[key] is not None:
                 out[key] = abs(out[key])
+        # An amount that was printed but cannot be parsed stays None and is reported; it is never a 0.
+        unreadable = [k for k in ("debit", "credit", "balance", "_amount") if str(row.get(k) or "").strip() not in {"", "-", "--", "—"} and out[k] is None]
+        for key in unreadable:
+            warnings.append(f"Row {d.strftime('%d/%m/%Y')}: the {key.strip('_')} {str(row.get(key))[:20]!r} could not be read as an amount; left empty")
+        out["_unreadable"] = bool(unreadable)
         parsed.append(out)
     if len(parsed) > 1 and parsed[0]["date"] > parsed[-1]["date"]:
         parsed.reverse()
@@ -259,7 +290,7 @@ def resolve_rows(rows: list[dict[str, Any]], opening: float | None) -> tuple[lis
                 row["credit" if is_credit else "debit"] = amount
                 row["direction_inferred"] = True
         debit, credit = row["debit"] or 0.0, row["credit"] or 0.0
-        ok = _fits(prev, debit, credit, row["balance"])
+        ok = None if row.pop("_unreadable") else _fits(prev, debit, credit, row["balance"])
         row["balance_ok"] = ok
         if ok is False:
             expected = prev - debit + credit

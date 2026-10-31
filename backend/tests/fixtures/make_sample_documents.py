@@ -746,6 +746,168 @@ def new_sample_files() -> dict[str, bytes]:
     }
 
 
+# ---------- table-style scans (two-column "Label | Value" tables, mild skew, image-only PDFs) ----------
+# Labels are centred in their row and values are top-aligned, so the two boxes' centres can be a line
+# apart: that is what the OCR row-joining has to survive. Everything is synthetic and stamped SAMPLE.
+
+TABLE_SCAN_SIZE = (900, 1273)  # A4 ratio; small enough that each PDF stays well under 200 KB
+
+
+def render_table_scan(
+    title: str, rows: list[tuple[str, list[str]]], *, skew: float = 1.5, size: tuple[int, int] = TABLE_SCAN_SIZE,
+    head: list[str] | None = None, big: tuple[str, int] | None = None,
+) -> Image.Image:
+    """rows: (label, value lines). A gridded two-column table, then rotated by `skew` degrees.
+    `big` = ("caption|number", row index to insert before): a large boxed number (bureau score)."""
+    image = Image.new("RGB", size, "white")
+    draw = ImageDraw.Draw(image)
+    f_title, f_text, f_big = _font(30, True), _font(21), _font(84, True)
+    draw.text((50, 40), title, fill="black", font=f_title)
+    y = 100
+    for line in head or []:
+        draw.text((50, y), line, fill="black", font=f_text)
+        y += 34
+    x0, x1, x2 = 50, 330, size[0] - 50
+    line_h, pad = 30, 10
+    for index, (label, values) in enumerate(rows):
+        if big and index == big[1]:
+            caption, number = big[0].split("|")
+            draw.rectangle((x0 + 140, y + 10, x2 - 140, y + 150), outline="black", width=4)
+            draw.text((x0 + 160, y + 18), caption, fill="black", font=f_text)
+            draw.text((x0 + 300, y + 50), number, fill="black", font=f_big)
+            y += 180
+        height = line_h * len(values) + 2 * pad
+        draw.rectangle((x0, y, x2, y + height), outline="black", width=2)
+        draw.line((x1, y, x1, y + height), fill="black", width=2)
+        label_h = f_text.getbbox(label)[3] - f_text.getbbox(label)[1]
+        draw.text((x0 + 10, y + (height - label_h) / 2 - 4), label, fill="black", font=f_text)  # centred
+        for n, value in enumerate(values):
+            draw.text((x1 + 12, y + pad + n * line_h), value, fill="black", font=f_text)  # top-aligned
+        y += height
+    _stamp(image)
+    return image.rotate(skew, resample=Image.BICUBIC, fillcolor="white")
+
+
+GST_TABLE_ROWS = [
+    ("Registration Number", [GSTIN]),
+    ("1. Legal Name", ["R. KUMAR"]),
+    ("2. Trade Name, if any", ["KUMAR TRADERS"]),
+    ("3. Constitution", ["Proprietorship"]),
+    ("4. Principal Place of Business", ["12, Market Road,", "Pune, Maharashtra, 411001"]),
+    ("5. Date of Liability", ["01/04/2022"]),
+    ("6. Type of Registration", ["Regular"]),
+]
+UDYAM_TABLE_ROWS = [
+    ("Udyam Registration Number", ["UDYAM-MH-00-1234567"]),
+    ("Name of Enterprise", ["KUMAR TRADERS"]),
+    ("Type of Enterprise", ["Small"]),
+    ("Major Activity", ["Trading"]),
+    ("Official address", ["12, Market Road,", "Pune, Maharashtra 411001"]),
+    ("Date of Incorporation", ["01/04/2022"]),
+    ("Date of Udyam Registration", ["10/05/2022"]),
+]
+AADHAAR_BACK_ROWS = [
+    ("Name", ["R. Kumar"]),
+    ("DOB", ["15/08/1990"]),
+    ("Gender", ["Male"]),
+    ("Address", ["S/O Suresh Kumar, 12, Market Road,", "Shivaji Nagar, Pune, Maharashtra - 411001"]),
+    ("Aadhaar Number", [AADHAAR_GROUPED]),
+]
+GSTR3B_HEAD = [f"GSTIN: {GSTIN}", "Legal name: R. KUMAR", "Financial Year: 2026-27", "Tax Period: April 2026"]
+GSTR3B_COLS = [40, 400, 520, 620, 730, 830]
+GSTR3B_TABLE = [
+    ["Nature of Supplies", "Taxable value", "IGST", "CGST", "SGST", "Cess"],
+    ["(a) Outward taxable supplies", "6,58,000.00", "0.00", "59,220.00", "59,220.00", "0.00"],
+    ["(other than zero rated, nil rated and exempted)"],
+    ["(b) Outward taxable supplies (zero rated)", "0.00", "0.00", "", "", "0.00"],
+]
+SCAN_STATEMENT_COLS = [40, 140, 400, 530, 690]  # wide enough that no two amounts touch
+SCAN_STATEMENT = [
+    ("01/04/2026", "Opening balance", "", "", "1,50,000.00"),
+    ("03/04/2026", "UPI/412345678901/Sale proceeds", "", "Rs658,000.00", "8,08,000.00"),
+    ("07/04/2026", "NEFT/DEMO0002/Rent April", "18,000.00", "", "7,90,000.00"),
+    ("12/04/2026", "NACH/EMI/Demo NBFC B", "22,500.00", "", "7,67,500.00"),
+]
+BUREAU_SCAN_ROWS = [
+    ("Name", ["R. KUMAR"]),
+    ("PAN", ["XXXXX" + PAN[5:]]),
+    ("Report date", ["12/06/2026"]),
+    ("Active accounts", ["2"]),
+    ("Total outstanding", ["Rs. 4,50,000"]),
+    ("CMR rank", ["4"]),
+]
+
+
+def render_statement_scan(skew: float = 1.2) -> Image.Image:
+    image = Image.new("RGB", TABLE_SCAN_SIZE, "white")
+    draw = ImageDraw.Draw(image)
+    font, bold = _font(18), _font(18, True)
+    draw.text((40, 40), "DEMO BANK A - Statement of Account", fill="black", font=_font(26, True))
+    header = ["Account Name: R. KUMAR (KUMAR TRADERS)", "Account No: XXXXXXXX4321    IFSC: DEMO0001234", "Period: 01-04-2026 to 30-04-2026"]
+    for n, text in enumerate(header):
+        draw.text((40, 90 + n * 30), text, fill="black", font=font)
+    cols = SCAN_STATEMENT_COLS
+    y = 210
+    for x, head in zip(cols, ["Date", "Narration", "Debit", "Credit", "Balance"]):
+        draw.text((x, y), head, fill="black", font=bold)
+    draw.line((30, y + 30, 860, y + 30), fill="black", width=2)
+    y += 46
+    for cells in SCAN_STATEMENT:
+        for x, text in zip(cols, cells):
+            if text:
+                draw.text((x, y), text, fill="black", font=font)
+        y += 40
+    _stamp(image)
+    return image.rotate(skew, resample=Image.BICUBIC, fillcolor="white")
+
+
+def render_gstr3b_scan(skew: float = 1.2) -> Image.Image:
+    """Month header lines, then the 3.1 table: Taxable value / IGST / CGST / SGST / Cess columns."""
+    image = Image.new("RGB", TABLE_SCAN_SIZE, "white")
+    draw = ImageDraw.Draw(image)
+    font, bold = _font(18), _font(18, True)
+    draw.text((40, 40), "Form GSTR-3B", fill="black", font=_font(28, True))
+    y = 100
+    for text in GSTR3B_HEAD:
+        draw.text((40, y), text, fill="black", font=font)
+        y += 32
+    draw.text((40, y + 20), "3.1 Details of outward supplies and inward supplies liable to reverse charge", fill="black", font=bold)
+    y += 70
+    for n, cells in enumerate(GSTR3B_TABLE):
+        for x, text in zip(GSTR3B_COLS, cells):
+            if text:
+                draw.text((x, y), text, fill="black", font=bold if n == 0 else font)
+        y += 38
+        if n == 0:
+            draw.line((30, y - 4, 880, y - 4), fill="black", width=2)
+    _stamp(image)
+    return image.rotate(skew, resample=Image.BICUBIC, fillcolor="white")
+
+
+def table_scan_files() -> dict[str, bytes]:
+    def pdf(image: Image.Image) -> bytes:
+        return build_pdf([{"image": image, "stamp": False}])
+
+    return {
+        # e-Aadhaar (text layer, password KUMA1990) that does print the address: label, three lines, a PIN line
+        # with the word "Vidya" in it (a header-looking word that must not end the address).
+        "e_aadhaar_with_address.pdf": build_pdf(
+            [{"lines": ["Unique Identification Authority of India", "e-Aadhaar", *AADHAAR_LINES,
+                        "Address: S/O Suresh Kumar, 12, Market Road,", "Vidya Nagar, Shivaji Nagar, Pune,", "Maharashtra, India", "PIN Code: 411001",
+                        "Mobile: 98XXXXXX10"]}],
+            password=PDF_PASSWORD,
+        ),
+        "gst_reg06_table_scan.pdf": pdf(render_table_scan("Form GST REG-06 - Registration Certificate", GST_TABLE_ROWS, skew=1.5)),
+        "udyam_table_scan.pdf": pdf(render_table_scan("UDYAM REGISTRATION CERTIFICATE", UDYAM_TABLE_ROWS, skew=-1.2)),
+        "aadhaar_back_table_scan.pdf": pdf(render_table_scan("Government of India - Aadhaar", AADHAAR_BACK_ROWS, skew=1.0)),
+        "gstr3b_table_scan.pdf": pdf(render_gstr3b_scan()),
+        "bank_statement_table_scan.pdf": pdf(render_statement_scan()),
+        "bureau_report_boxed_score.pdf": pdf(
+            render_table_scan("DEMO CREDIT BUREAU - Consumer Credit Report", BUREAU_SCAN_ROWS, skew=1.3, big=("DEMO CREDIT SCORE|742", 0))
+        ),
+    }
+
+
 # ---------- write everything ----------
 
 
@@ -819,6 +981,7 @@ def main() -> None:
     files["archive.zip"] = build_zip()
     files["empty.bin"] = b""
     files.update(new_sample_files())
+    files.update(table_scan_files())
 
     for name, data in files.items():
         (OUT / name).write_bytes(data)

@@ -42,11 +42,28 @@ TEXTLINE_ORIENTATION_MODEL = "PP-LCNet_x1_0_textline_ori"
 DET_OPTIONS = {"limit_side_len": 1280, "limit_type": "max", "thresh": 0.3, "box_thresh": 0.6, "unclip_ratio": 1.5}
 
 
+EDGE_PAD = 0.3  # crop margin on each short side, as a fraction of the box height
+
+
+def _widen(pts: np.ndarray, pad: float = EDGE_PAD) -> np.ndarray:
+    """Move the left and right edges of a quad outward along the text direction by pad x box height.
+    The recogniser drops a character that touches a tight crop edge (a GSTIN came out as 14 characters).
+    Only the pixels fed to the recogniser change; the returned OcrLine boxes still come from the
+    detector's polygon, so highlight and redaction boxes are unaffected."""
+    along = (pts[1] - pts[0] + pts[2] - pts[3]) / 2
+    length = float(np.linalg.norm(along))
+    height = float(max(np.linalg.norm(pts[0] - pts[3]), np.linalg.norm(pts[1] - pts[2])))
+    if length < 1 or length < height:  # a vertical strip is rotated after cropping; leave it alone
+        return pts
+    shift = along / length * pad * height
+    return np.float32([pts[0] - shift, pts[1] + shift, pts[2] + shift, pts[3] - shift])
+
+
 def _crop(image: np.ndarray, poly: np.ndarray) -> np.ndarray:
-    """Perspective-crop one detected text quad to an upright strip."""
+    """Perspective-crop one detected text quad to an upright strip, with a small margin at both ends."""
     import cv2
 
-    pts = poly.astype(np.float32)
+    pts = _widen(poly.astype(np.float32))
     width = int(max(np.linalg.norm(pts[0] - pts[1]), np.linalg.norm(pts[2] - pts[3])))
     height = int(max(np.linalg.norm(pts[0] - pts[3]), np.linalg.norm(pts[1] - pts[2])))
     width, height = max(width, 1), max(height, 1)
