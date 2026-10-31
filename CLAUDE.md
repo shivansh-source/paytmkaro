@@ -310,6 +310,19 @@ fractions 0-1; extracted values are NOT pattern-constrained (a misread must be s
 can flag it); all models forbid unknown fields. **Privacy is enforced by types**: Aadhaar and bank
 account numbers are `Last4` (exactly 4 digits), so a full number cannot be stored.
 
+**Schema 1.1** (readers still accept 1.0 payloads, so profiles saved in the browser keep working):
+`Transaction.balance` and `Aadhaar.dob` can be null (read code must cope), `opening_balance` is optional,
+and `Aadhaar.year_of_birth`, `Transaction.ref` and the `input_kind` values `spreadsheet` / `word` / `text`
+were added. A row with no printed balance is kept, never dropped; validation chains a running total through
+it, and `bank.balance_math` is a warning (never a pass) when fewer than half the rows can be checked.
+Not in the envelope yet: bureau report, financial statements, sanction letter, settlement report (their
+extraction is returned raw).
+
+**Extraction entry point:** `app/documents/process.py::process_upload(bytes, file_name, sme_id=...)` runs
+ingest → classify → extract → `DocumentEnvelope` with one shared VLM budget and never raises (it returns a
+status). It also offers `bureau` from an uploaded report as `self_declared` (unverified); nothing passes it to
+`assess()` yet. `/v1/documents` is still a stub.
+
 Demo documents: PAN (photo→VLM), Aadhaar (photo→VLM), GST REG-06 (PDF→parser), GSTR-3B 6 months
 (PDF→parser), bank statement 6-12 months (scanned PDF→OCR tables), Udyam (PDF or photo), ITR-V
 optional (PDF→parser).

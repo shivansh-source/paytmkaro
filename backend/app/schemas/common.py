@@ -15,7 +15,10 @@ from typing import Annotated, Generic, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, computed_field
 
-SCHEMA_VERSION = "1.0"
+# 1.1: Transaction.balance and Aadhaar.dob are optional, Aadhaar.year_of_birth / Transaction.ref / more
+# Triage.input_kind values were added. Readers must now cope with a null balance. Payloads written as "1.0"
+# still validate (nothing in them became invalid), so profiles saved in a browser keep working.
+SCHEMA_VERSION = "1.1"
 
 # Fields below this confidence go to the user to confirm (unless already confirmed).
 REVIEW_CONFIDENCE = 0.85

@@ -44,14 +44,18 @@ def compute_metrics(docs: DocumentSet) -> CashflowMetrics:
         months = month_range(month_key(start), month_key(end))
         ev = _ev(bank_env, "data.transactions")
 
-        # Daily end-of-day balance, carried forward on days without transactions.
-        eod: dict[date, float] = {t.date: t.balance for t in txns}
-        balance = _v(bank.opening_balance) if _v(bank.opening_balance) is not None else txns[0].balance
+        # Daily end-of-day balance, carried forward on days without transactions. Only printed balances count:
+        # with fewer than half the rows printing one, an average would be a guess, so it is left out.
+        printed = [t for t in txns if t.balance is not None]
+        eod: dict[date, float] = {t.date: t.balance for t in printed}
+        opening = _v(bank.opening_balance)
+        balance = opening if opening is not None else (printed[0].balance if printed else None)
         daily: list[float] = []
         day = start
-        while day <= end:
+        while day <= end and len(printed) * 2 >= len(txns):
             balance = eod.get(day, balance)
-            daily.append(balance)
+            if balance is not None:
+                daily.append(balance)
             day += timedelta(days=1)
 
         credits = bank_credits_by_month(docs)
@@ -67,9 +71,10 @@ def compute_metrics(docs: DocumentSet) -> CashflowMetrics:
                 emi_by_month[month_key(t.date)] += t.debit
         emi = sum(emi_by_month[m] for m in emi_months) / len(emi_months)
 
+        if daily:
+            metrics["avg_monthly_balance"] = Sourced[float](value=round(sum(daily) / len(daily), 2), evidence=ev)
         metrics.update(
             months_analyzed=len(months),
-            avg_monthly_balance=Sourced[float](value=round(sum(daily) / len(daily), 2), evidence=ev),
             avg_monthly_credits=Sourced[float](value=round(avg_credits, 2), evidence=ev),
             bounces_6m=Sourced[int](value=bounces, evidence=ev),
             existing_emi_monthly=Sourced[float](value=round(emi, 2), evidence=ev),

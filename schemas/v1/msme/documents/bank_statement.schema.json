@@ -362,6 +362,18 @@
           "title": "Narration",
           "type": "string"
         },
+        "ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ref"
+        },
         "debit": {
           "default": 0,
           "minimum": 0,
@@ -375,8 +387,16 @@
           "type": "number"
         },
         "balance": {
-          "title": "Balance",
-          "type": "number"
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Balance"
         },
         "tags": {
           "default": [],
@@ -409,8 +429,7 @@
       },
       "required": [
         "date",
-        "narration",
-        "balance"
+        "narration"
       ],
       "title": "Transaction",
       "type": "object"
@@ -451,7 +470,15 @@
       "$ref": "#/$defs/Extracted_date_"
     },
     "opening_balance": {
-      "$ref": "#/$defs/Extracted_float_"
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Extracted_float_"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     },
     "closing_balance": {
       "$ref": "#/$defs/Extracted_float_"
@@ -470,7 +497,6 @@
     "ifsc",
     "period_from",
     "period_to",
-    "opening_balance",
     "closing_balance",
     "transactions"
   ],

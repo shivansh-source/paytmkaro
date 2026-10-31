@@ -289,7 +289,7 @@ def _score(v: Any) -> Any:
 def _bureau(v: Any) -> Any:
     if isinstance(v, str):
         low = v.lower()
-        for key, out in (("cibil", "cibil"), ("transunion", "cibil"), ("experian", "experian"), ("equifax", "equifax"), ("crif", "crif"), ("high mark", "crif")):
+        for key, out in (("cibil", "cibil"), ("transunion", "cibil"), ("experian", "experian"), ("equifax", "equifax"), ("crif", "crif"), ("high mark", "crif"), ("bureau", "other")):
             if key in low:
                 return out
     return v
@@ -364,7 +364,7 @@ def _audit_status(v: Any) -> Any:
 
 
 Bool = Annotated[bool, BeforeValidator(_bool)]
-Count = Annotated[int, Field(ge=0, le=100000), BeforeValidator(_int)]
+Count = Annotated[int, Field(ge=0, le=10_000_000), BeforeValidator(_int)]
 Percent = Annotated[float, Field(ge=0, le=100), BeforeValidator(_pct)]
 PanMasked = Annotated[str, Field(pattern=r"^X{6}[0-9]{3}[A-Z]$"), BeforeValidator(_pan_masked)]
 ShortText = Annotated[str, Field(min_length=2, max_length=300), BeforeValidator(_text)]
@@ -374,7 +374,7 @@ UdyamNumber = Annotated[str, Field(pattern=r"^UDYAM-[A-Z]{2}-[0-9]{2}-[0-9]{7}$"
 
 
 class BureauFields(_Fields):
-    bureau_name: Annotated[Literal["cibil", "experian", "equifax", "crif"], BeforeValidator(_bureau)] | None = None
+    bureau_name: Annotated[Literal["cibil", "experian", "equifax", "crif", "other"], BeforeValidator(_bureau)] | None = None
     report_date: IsoDate | None = None
     # Full PAN is never stored: XXXXXX + last 4 characters, enough to compare with the PAN card.
     pan_masked: PanMasked | None = None
@@ -405,7 +405,7 @@ class BureauAccount(_Fields):
     outstanding: NonNegAmount | None = None
     emi: NonNegAmount | None = None
     dpd_max: Annotated[int, Field(ge=0, le=999), BeforeValidator(_int)] | None = None
-    dpd_summary: ShortText | None = None
+    dpd_summary: Annotated[str, Field(min_length=1, max_length=300), BeforeValidator(_text)] | None = None
     source: Literal["text_layer", "ocr", "vlm"] | None = None
     page_index: int | None = None
     confidence: float | None = Field(default=None, ge=0, le=1)

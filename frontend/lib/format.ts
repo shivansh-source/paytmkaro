@@ -50,6 +50,7 @@ export const FIELD_LABEL: Record<string, string> = {
   name: "Name",
   father_name: "Father's name",
   dob: "Date of birth",
+  year_of_birth: "Year of birth",
   aadhaar_last4: "Aadhaar (last 4)",
   gender: "Gender",
   address: "Address",
