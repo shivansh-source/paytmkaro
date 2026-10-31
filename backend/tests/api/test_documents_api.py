@@ -1,12 +1,19 @@
 """POST /v1/documents through HTTP, then the envelopes straight into /v1/assess."""
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
 
 client = TestClient(app)
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "documents"
+
+
+@pytest.fixture(autouse=True)
+def no_real_engines(monkeypatch):
+    """The route never runs real PaddleOCR or calls Groq in tests."""
+    monkeypatch.setattr("app.api.v1.documents.default_engines", lambda: (None, None))
 
 
 def post(name: str, **form):
@@ -17,14 +24,14 @@ def post(name: str, **form):
 
 
 def test_uploaded_documents_feed_assess():
-    documents = []
+    envelopes = []
     for name, form in [("gst_reg06.pdf", {"document_type": "gst_registration"}),
                        ("bank_statement.pdf", {"document_type": "bank_statement"}),
                        ("e_aadhaar_encrypted.pdf", {"document_type": "aadhaar", "password": "KUMA1990"})]:
-        documents += post(name, **form)["documents"]
-    assert {d["document_type"] for d in documents} == {"gst_registration", "bank_statement", "aadhaar"}
+        envelopes += post(name, **form)["envelopes"]
+    assert {d["document_type"] for d in envelopes} == {"gst_registration", "bank_statement", "aadhaar"}
 
-    response = client.post("/v1/assess", json={"sme_id": "T-API", "documents": documents})
+    response = client.post("/v1/assess", json={"sme_id": "T-API", "documents": envelopes})
     assert response.status_code == 200, response.text
     body = response.json()
     assert {d["status"] for d in body["documents"]} <= {"verified", "needs_review"}
@@ -35,7 +42,7 @@ def test_password_and_unsupported_files_are_explained_not_errors():
     locked = post("e_aadhaar_encrypted.pdf")
     assert locked["status"] == "password_required" and "password" in locked["message"].lower()
     legacy = post("legacy_word.doc")
-    assert legacy["status"] == "unsupported_format" and legacy["documents"] == []
+    assert legacy["status"] == "unsupported_format" and legacy["envelopes"] == []
 
 
 def test_upload_needs_a_file_and_an_sme_id():

@@ -12,6 +12,7 @@ failures are logged by exception class only (never with file content).
 
 from __future__ import annotations
 
+import importlib.util
 import logging
 from datetime import date, datetime
 
@@ -19,16 +20,37 @@ from pydantic import BaseModel, ValidationError
 
 from app import config
 from app.documents.classify import classify
-from app.documents.extract.envelope import build_envelope, has_envelope
+from app.documents.extract.envelope import ENVELOPE_TYPE, build_envelope, has_envelope
 from app.documents.extract.pipeline import extract_detailed
 from app.documents.ingest import load_document
 from app.documents.models import ClassificationResult, DocumentType, ExtractionResult, LoadStatus
 from app.documents.ports import OcrEngine, VlmClient
+from app.documents.vlm import get_default_vlm
 from app.documents.vlm.budget import VlmBudget
+from app.schemas.common import DocumentType as EnvelopeType
 from app.schemas.documents import DocumentEnvelope
 from app.schemas.profile import BureauScore
 
 log = logging.getLogger(__name__)
+
+PIPELINE_TYPE = {ours: theirs for theirs, ours in ENVELOPE_TYPE.items()}  # upload slot -> pipeline type
+LABELS = {
+    DocumentType.BUREAU_REPORT: "credit bureau report",
+    DocumentType.FINANCIAL_STATEMENTS: "financial statements",
+    DocumentType.SANCTION_LETTER: "loan sanction letter",
+    DocumentType.SETTLEMENT_REPORT: "payment settlement report",
+}
+NO_OCR = "This looks like a photo or scan, and text reading (OCR) isn't switched on yet. Upload the original PDF for now."
+UNKNOWN = "We couldn't tell which document this is. Upload it in the right slot, or try a clearer copy."
+UNREADABLE = "We recognised this document but couldn't read its details. Try a clearer photo or the original PDF."
+
+
+class SkippedPart(BaseModel):
+    """Pages the SME uploaded that did not become a usable envelope, with a reason they can act on."""
+
+    pages: list[int]  # 1-based, as the SME sees them
+    document_type: str  # pipeline type; "unknown" when not recognised
+    reason: str
 
 
 class ProcessResult(BaseModel):
@@ -49,6 +71,8 @@ class ProcessResult(BaseModel):
     bureau: BureauScore | None = None
     # What was read but could not be put in an envelope (contract gaps hit at run time).
     notes: list[str] = []
+    # User-facing: every part of the file that gave no usable envelope, and why (the upload page shows these).
+    skipped: list[SkippedPart] = []
     vlm_requests_used: int = 0
     warnings: list[str] = []
 
@@ -59,15 +83,18 @@ def process_upload(
     *,
     sme_id: str,
     password: str | None = None,
+    expected_type: EnvelopeType | None = None,
     ocr: OcrEngine | None = None,
     vlm: VlmClient | None = None,
     budget: VlmBudget | None = None,
     uploaded_at: datetime | None = None,
 ) -> ProcessResult:
+    """`expected_type`: the upload slot the SME chose. Used only when the classifier recognises nothing in a
+    one-segment file; a confident classification that disagrees wins, with a warning."""
     budget = budget if budget is not None else VlmBudget(config.VLM_MAX_REQUESTS_PER_DOCUMENT)
     start = budget.used
     try:
-        return _process(data, file_name, sme_id, password, ocr, vlm, budget, uploaded_at, start)
+        return _process(data, file_name, sme_id, password, expected_type, ocr, vlm, budget, uploaded_at, start)
     except Exception as exc:  # noqa: BLE001 - the upload endpoint must never see an exception
         log.warning("process_upload failed: %s", type(exc).__name__)  # class only: messages may carry file content
         return ProcessResult(
@@ -99,7 +126,7 @@ def _self_provided_bureau(extractions: list[ExtractionResult]) -> BureauScore | 
         return None
 
 
-def _process(data, file_name, sme_id, password, ocr, vlm, budget, uploaded_at, start) -> ProcessResult:
+def _process(data, file_name, sme_id, password, expected_type, ocr, vlm, budget, uploaded_at, start) -> ProcessResult:
     document = load_document(data, file_name, password=password, ocr=ocr)
     if document.status != LoadStatus.OK:
         return ProcessResult(
@@ -109,29 +136,70 @@ def _process(data, file_name, sme_id, password, ocr, vlm, budget, uploaded_at, s
     classification = classify(document, vlm=vlm, budget=budget)
     result = ProcessResult(file_name=file_name, sha256=document.sha256, status="ok", classification=classification, warnings=list(document.warnings))
     counts: dict[str, int] = {}
-    for segment in classification.segments:
-        if segment.document_type == DocumentType.UNKNOWN:
-            result.notes.append(f"Pages {', '.join(str(i + 1) for i in segment.page_indexes)} were not recognised as a known document")
+    segments = [(s.document_type, s.page_indexes) for s in classification.segments]
+    hint = PIPELINE_TYPE.get(expected_type) if expected_type else None
+    if hint and len(segments) == 1 and segments[0][0] == DocumentType.UNKNOWN:
+        segments = [(hint, segments[0][1])]
+        result.warnings.append("We couldn't recognise this document on our own, so we read it as the one you chose.")
+
+    def no_text(pages: list[int]) -> bool:
+        return ocr is None and vlm is None and not any(p.text.strip() for p in document.pages if p.index in pages)
+
+    for doc_type, page_indexes in segments:
+        shown = [i + 1 for i in page_indexes]
+        if doc_type == DocumentType.UNKNOWN:
+            result.notes.append(f"Pages {', '.join(map(str, shown))} were not recognised as a known document")
+            result.skipped.append(SkippedPart(pages=shown, document_type=doc_type.value, reason=NO_OCR if no_text(page_indexes) else UNKNOWN))
             continue
-        extraction = extract_detailed(document, segment.document_type, page_indexes=segment.page_indexes, vlm=vlm, budget=budget)
-        kind = segment.document_type.value
+        extraction = extract_detailed(document, doc_type, page_indexes=page_indexes, vlm=vlm, budget=budget)
+        kind = doc_type.value
         counts[kind] = counts.get(kind, 0) + 1
         result.warnings.extend(f"{kind}: {w}" for w in extraction.result.warnings)
-        if not has_envelope(segment.document_type):
+        if not has_envelope(doc_type):
             result.extractions.append(extraction.result)
+            result.skipped.append(SkippedPart(pages=shown, document_type=kind,
+                                              reason=f"Looks like a {LABELS.get(doc_type, kind)}. We can read it, but it isn't used in your score yet."))
             continue
         built = build_envelope(
             extraction, document, sme_id=sme_id, document_id=f"{document.sha256[:12]}-{kind}-{counts[kind]}",
-            uploaded_at=uploaded_at, page_indexes=segment.page_indexes, size_bytes=len(data), password_protected=bool(password),
+            uploaded_at=uploaded_at, page_indexes=page_indexes, size_bytes=len(data), password_protected=bool(password),
         )
         if built is not None:
             result.envelopes.append(built.envelope)
             result.notes.extend(f"{kind}: {note}" for note in built.notes)
+            if built.envelope.status == "failed":
+                result.skipped.append(SkippedPart(pages=shown, document_type=kind, reason=NO_OCR if no_text(page_indexes) else UNREADABLE))
+    usable = [e for e in result.envelopes if e.status != "failed"]
+    if expected_type and usable and all(e.document_type != expected_type for e in usable):
+        found = ", ".join(sorted({e.document_type.value.replace("_", " ") for e in usable}))
+        result.warnings.append(f"You uploaded this as {expected_type.value.replace('_', ' ')}, but it looks like: {found}. We used what it is.")
     result.bureau = _self_provided_bureau(result.extractions)
     if result.bureau is not None:
         result.warnings.append("bureau_report: the score comes from a report you uploaded, so it is unverified; the lender will pull its own.")
+        for part in result.skipped:
+            if part.document_type == DocumentType.BUREAU_REPORT.value:
+                part.reason = f"Credit report: we use its score ({result.bureau.value}) as self-declared; the lender checks its own."
     if not result.envelopes and not result.extractions:
         result.status = "nothing_recognised"
         result.message = "We could not recognise any supported document in this file. Upload a PAN, Aadhaar, GST certificate, GSTR-3B, Udyam, ITR-V or bank statement."
     result.vlm_requests_used = budget.used - start
     return result
+
+
+def default_ocr() -> OcrEngine | None:
+    """Local PaddleOCR when it is installed (it is heavy, ~1 GB); else None."""
+    if importlib.util.find_spec("paddleocr") is None:
+        return None
+    from app.documents.ocr import get_default_ocr
+
+    return get_default_ocr()
+
+
+def default_engines() -> tuple[OcrEngine | None, VlmClient | None]:
+    """The engines the upload route uses. The VLM only runs alongside OCR, because OCR is what finds Aadhaar
+    numbers to black out before a page image leaves the server (config.VLM_WITHOUT_OCR overrides, knowingly)."""
+    ocr, vlm = default_ocr(), get_default_vlm()
+    if ocr is None and vlm is not None and not config.VLM_WITHOUT_OCR:
+        log.warning("PaddleOCR is not installed: the VLM is off for uploads so unredacted images never leave the server")
+        vlm = None
+    return ocr, vlm
