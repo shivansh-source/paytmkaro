@@ -4,6 +4,7 @@ services:
   - type: web
     name: creditsetu-api
     runtime: docker
+    region: singapore     # next to the Supabase database (ap-southeast-1)
     rootDir: backend
     dockerfilePath: ./Dockerfile
     plan: free            # 512 MB: digital PDFs only. For photos/scans: plan standard (2 GB) + WITH_OCR=1 below.
@@ -12,8 +13,8 @@ services:
     envVars:
       - key: CREDITSETU_ENV
         value: production
-      - key: CREDITSETU_SECRET          # encrypts stored documents; never change it after data exists
-        generateValue: true
+      - key: CREDITSETU_SECRET          # SAME value as backend/.env: data in the shared Supabase is encrypted with it
+        sync: false
       - key: DATABASE_URL               # Supabase > Connect > Session pooler URI (IPv4)
         sync: false
       - key: SUPABASE_URL               # https://<project>.supabase.co
