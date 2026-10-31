@@ -80,6 +80,9 @@ class Page(BaseModel):
     width: int | None = None
     height: int | None = None
     ocr_lines: list[OcrLine] = []
+    # Verhoeff check of each Aadhaar number found on this page, computed on the FULL number before
+    # it was masked (the full number never leaves ingest). Empty when none was found.
+    aadhaar_verhoeff_valid: list[bool] = []
     # Tables as rows of cell strings: spreadsheet sheets, docx tables, or
     # tables reconstructed from a PDF text layer.
     tables: list[list[list[str]]] = []

@@ -8,13 +8,15 @@ import logging
 import re
 import warnings
 import zipfile
+from collections.abc import Callable
+from typing import NamedTuple
 
 from PIL import Image, ImageDraw, ImageOps
 
 from app import config
 from app.documents.models import LoadStatus, OcrLine, Page, TextSource
 from app.documents.ports import OcrEngine
-from app.documents.privacy import find_aadhaar_spans, mask_aadhaar_text, redact_aadhaar_image
+from app.documents.privacy import find_aadhaar_spans, mask_aadhaar_text, redact_aadhaar_image, verhoeff_valid
 
 log = logging.getLogger(__name__)
 
@@ -85,8 +87,43 @@ def normalize_image(image: Image.Image) -> Image.Image:
     return image
 
 
+def verhoeff_flags(text: str, context: str | None = None) -> list[bool]:
+    """Verhoeff check of every Aadhaar number in `text`, computed on the full digits before
+    masking. Only the booleans are kept: the digits never leave this function."""
+    return [verhoeff_valid(re.sub(r"\D", "", text[start:end])) for start, end in find_aadhaar_spans(text, context)]
+
+
+def mask_row(parts: list[str], context: str) -> tuple[list[str], list[bool], list[tuple[int, int, int]]]:
+    """Mask Aadhaar numbers across fragments that form one visual row (OCR boxes, table cells).
+    A number split over several fragments ('2345' | '6789' | '0124') is found on the joined row;
+    each fragment then loses its share of the hidden digits. Returns the masked fragments,
+    one Verhoeff flag per number, and (fragment index, start, end) of every hidden stretch."""
+    row = " ".join(parts)
+    spans, offset = [], 0
+    for part in parts:
+        spans.append((offset, offset + len(part)))
+        offset += len(part) + 1
+    masked = [mask_aadhaar_text(part, context) for part in parts]
+    flags, hits = [], []
+    for number_start, number_end in find_aadhaar_spans(row, context):
+        flags.append(verhoeff_valid(re.sub(r"\D", "", row[number_start:number_end])))
+        hidden = (number_start, number_end - 4)  # the last 4 digits stay visible
+        touched = [(i, max(hidden[0], s), min(hidden[1], e), s) for i, (s, e) in enumerate(spans)]
+        touched = [t for t in touched if t[1] < t[2]]
+        for i, lo, hi, start in touched:
+            if len(touched) > 1:
+                chars = list(masked[i])
+                for k in range(lo - start, hi - start):
+                    if chars[k].isdigit():
+                        chars[k] = "X"
+                masked[i] = "".join(chars)
+            hits.append((i, lo - start, hi - start))
+    return masked, flags, hits
+
+
 def mask_tables(tables: list[list[list[str]]], context: str) -> list[list[list[str]]]:
-    return [[[mask_aadhaar_text(cell, context) for cell in row] for row in table] for table in tables]
+    """Mask row by row, so a number split across cells is still caught."""
+    return [[mask_row(row, context)[0] for row in table] for table in tables]
 
 
 def native_page(index: int, text: str, tables: list[list[list[str]]] | None = None) -> Page:
@@ -98,7 +135,44 @@ def native_page(index: int, text: str, tables: list[list[list[str]]] | None = No
         text=mask_aadhaar_text(text, context),
         text_source=TextSource.NATIVE if text.strip() else TextSource.NONE,
         tables=mask_tables(tables, context),
+        # Tables repeat the text (sheets and docx build text from them), so count the text only.
+        aadhaar_verhoeff_valid=verhoeff_flags(text, context),
     )
+
+
+def run_ocr(index: int, image_png: bytes, ocr: OcrEngine, warnings_out: list[str]) -> list[OcrLine] | None:
+    try:
+        return [line for line in ocr.recognize(image_png) if line.text.strip()]
+    except Exception as exc:  # an OCR crash must not fail the whole upload
+        log.warning("OCR failed on page %d: %s", index, type(exc).__name__)
+        warnings_out.append(f"Page {index + 1}: text could not be read (OCR error).")
+        return None
+
+
+class OcrMasked(NamedTuple):
+    image_png: bytes
+    lines: list[OcrLine]
+    text: str
+    verhoeff: list[bool]
+
+
+def mask_ocr_page(raw_lines: list[OcrLine], image_png: bytes, include: Callable[[OcrLine], bool] | None = None) -> OcrMasked:
+    """Apply the privacy invariant to one OCR'd image: redact the image everywhere, and return
+    masked lines/text/flags for the rows where `include` holds for some line (all rows by default)."""
+    rows = _rows(raw_lines)
+    context = "\n".join(text for text, _ in rows)
+    lines, texts, flags, boxes = [], [], [], []
+    for _, spans in rows:
+        indexes = [i for i, _ in spans]
+        masked, row_flags, hits = mask_row([raw_lines[i].text for i in indexes], context)
+        for j, start, end in hits:
+            boxes.extend(_fragment_boxes(raw_lines[indexes[j]], start, end))
+        if include is None or any(include(raw_lines[i]) for i in indexes):
+            flags.extend(row_flags)
+            texts.append(" ".join(masked))
+            lines.extend(raw_lines[i].model_copy(update={"text": m}) for i, m in zip(indexes, masked))
+    redacted = redact_aadhaar_image(image_png, raw_lines, context=context)
+    return OcrMasked(redact_boxes(redacted, boxes), lines, "\n".join(texts), flags)
 
 
 def ocr_page(
@@ -110,36 +184,12 @@ def ocr_page(
     page = Page(index=index, image_png=image_png, width=image.width, height=image.height)
     if ocr is None:
         return page
-    try:
-        raw_lines = [line for line in ocr.recognize(image_png) if line.text.strip()]
-    except Exception as exc:  # an OCR crash must not fail the whole upload
-        log.warning("OCR failed on page %d: %s", index, type(exc).__name__)
-        warnings_out.append(f"Page {index + 1}: text could not be read (OCR error).")
+    raw_lines = run_ocr(index, image_png, ocr, warnings_out)
+    if raw_lines is None:
         return page
-    rows = _rows(raw_lines)
-    context = "\n".join(text for text, _ in rows)
-    masked_texts = [line.text for line in raw_lines]
-    boxes = []
-    for row_text, spans in rows:
-        for number_start, number_end in find_aadhaar_spans(row_text, context):
-            region = (number_start, number_end - 4)  # the last 4 digits stay visible
-            hit = [(i, start, max(region[0], start), min(region[1], end)) for i, (start, end) in spans]
-            hit = [h for h in hit if h[2] < h[3]]
-            for i, start, lo, hi in hit:
-                if len(hit) > 1:
-                    # Number split across boxes: X out this fragment's share of the hidden digits.
-                    chars = list(masked_texts[i])
-                    for k in range(lo - start, hi - start):
-                        if chars[k].isdigit():
-                            chars[k] = "X"
-                    masked_texts[i] = "".join(chars)
-                boxes.extend(_fragment_boxes(raw_lines[i], lo - start, hi - start))
-
-    page.image_png = redact_boxes(redact_aadhaar_image(image_png, raw_lines, context=context), boxes)
-    page.ocr_lines = [
-        line.model_copy(update={"text": mask_aadhaar_text(text, context)}) for line, text in zip(raw_lines, masked_texts)
-    ]
-    page.text = mask_aadhaar_text("\n".join(" ".join(page.ocr_lines[i].text for i, _ in spans) for _, spans in rows))
+    result = mask_ocr_page(raw_lines, image_png)
+    page.image_png, page.ocr_lines, page.text = result.image_png, result.lines, result.text
+    page.aadhaar_verhoeff_valid = result.verhoeff
     page.text_source = TextSource.OCR if page.text.strip() else TextSource.NONE
     return page
 

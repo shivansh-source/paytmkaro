@@ -14,7 +14,7 @@ import pypdfium2.raw as pdfium_c
 from PIL import Image
 
 from app import config
-from app.documents.models import LoadStatus, Page, TextSource
+from app.documents.models import LoadStatus, OcrLine, Page, TextSource
 from app.documents.ports import OcrEngine
 from app.documents.privacy import find_aadhaar_spans, mask_aadhaar_text
 from app.documents.ingest.common import (
@@ -22,11 +22,14 @@ from app.documents.ingest.common import (
     IngestError,
     check_page_count,
     has_real_text,
+    mask_ocr_page,
     mask_tables,
     meaningful_chars,
     ocr_page,
     redact_boxes,
+    run_ocr,
     to_png,
+    verhoeff_flags,
 )
 
 # Below this many meaningful characters, a page mostly covered by an image is a scan.
@@ -185,6 +188,45 @@ def _image_coverage(page: pdfium.PdfPage) -> float:
     return min(covered / max(width * height, 1), 1.0)
 
 
+EMBEDDED_IMAGE_SHARE = 0.05  # an image this big (share of the page) may be a pasted ID photo
+
+
+def _large_image_boxes(page: pdfium.PdfPage, size: tuple[int, int]) -> list[tuple[float, float, float, float]]:
+    """Pixel boxes of image objects covering a meaningful share of the page (logos are skipped,
+    so ordinary statements never pay for a second OCR pass)."""
+    width, height = page.get_size()
+    boxes = []
+    for obj in page.get_objects(filter=(pdfium_c.FPDF_PAGEOBJ_IMAGE,)):
+        left, bottom, right, top = obj.get_bounds()
+        if (right - left) * (top - bottom) < EMBEDDED_IMAGE_SHARE * width * height:
+            continue
+        (x0, y0), (x1, y1) = _to_device(page, size, left, top), _to_device(page, size, right, bottom)
+        boxes.append((min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1)))
+    return boxes
+
+
+def _read_embedded_images(
+    page: Page, ocr: OcrEngine, boxes: list[tuple[float, float, float, float]], warnings: list[str]
+) -> None:
+    """A text-layer page with a big picture (an Aadhaar photo pasted into a PDF): OCR the render,
+    redact any Aadhaar number anywhere on it, and add the text found inside the picture."""
+    lines = run_ocr(page.index, page.image_png, ocr, warnings)
+    if lines is None:
+        return
+
+    def inside(line: OcrLine) -> bool:
+        x0, y0, x1, y1 = line.bbox
+        cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+        return any(bx0 <= cx <= bx1 and by0 <= cy <= by1 for bx0, by0, bx1, by1 in boxes)
+
+    result = mask_ocr_page(lines, page.image_png, include=inside)
+    page.image_png = result.image_png
+    page.ocr_lines = [line for line in result.lines if inside(line)]
+    page.aadhaar_verhoeff_valid += result.verhoeff
+    if result.text:
+        page.text = f"{page.text}\n{result.text}" if page.text else result.text
+
+
 def _is_born_digital(page: pdfium.PdfPage, text: str) -> bool:
     """Real text layer, and not a scan with a short stamp/footer on top. A searchable scan
     (scanner app with an invisible OCR layer) has plenty of text and counts as born-digital."""
@@ -198,7 +240,7 @@ def load_pdf(data: bytes, password: str | None, ocr: OcrEngine | None, warnings:
     try:
         check_page_count(len(pdf))
         pages = []
-        scanned_without_ocr = 0
+        scanned_without_ocr = images_unchecked = 0
         for index in range(len(pdf)):
             page = pdf[index]
             textpage = page.get_textpage()
@@ -210,17 +252,22 @@ def load_pdf(data: bytes, password: str | None, ocr: OcrEngine | None, warnings:
             image_png = redact_boxes(to_png(image), _text_layer_boxes(page, textpage, raw, image.size))
 
             if _is_born_digital(page, text):
-                pages.append(
-                    Page(
-                        index=index,
-                        text=mask_aadhaar_text(text),
-                        text_source=TextSource.NATIVE,
-                        tables=mask_tables(_text_layer_tables(textpage, raw), text),
-                        image_png=image_png,
-                        width=image.width,
-                        height=image.height,
-                    )
+                native = Page(
+                    index=index,
+                    text=mask_aadhaar_text(text),
+                    text_source=TextSource.NATIVE,
+                    tables=mask_tables(_text_layer_tables(textpage, raw), text),
+                    aadhaar_verhoeff_valid=verhoeff_flags(text),
+                    image_png=image_png,
+                    width=image.width,
+                    height=image.height,
                 )
+                boxes = _large_image_boxes(page, image.size)
+                if boxes and ocr is None:
+                    images_unchecked += 1
+                elif boxes:
+                    _read_embedded_images(native, ocr, boxes, warnings)
+                pages.append(native)
             elif ocr is not None:
                 pages.append(ocr_page(index, image, ocr, warnings, image_png=image_png))
             else:
@@ -230,6 +277,10 @@ def load_pdf(data: bytes, password: str | None, ocr: OcrEngine | None, warnings:
             page.close()
         if scanned_without_ocr:
             warnings.append(f"{scanned_without_ocr} page(s) look scanned; OCR was not run on them.")
+        if images_unchecked:
+            warnings.append(
+                f"{images_unchecked} page(s) contain large images that were not OCR'd or checked for Aadhaar numbers."
+            )
         return pages
     finally:
         pdf.close()

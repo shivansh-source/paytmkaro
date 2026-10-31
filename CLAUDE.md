@@ -141,6 +141,7 @@ client-side navigation. `lib/types.ts` mirrors the backend contracts the UI read
 | POST   | `/v1/documents`             | stub                                                     |
 | GET    | `/v1/profile/{sme_id}`      | stub (no storage yet)                                    |
 | POST   | `/v1/assess`                | envelopes → checked documents + `SmeProfile`             |
+| POST   | `/v1/score`                 | same body as `/v1/assess` → indicative `ScoreCard` (`app/assessment`; weights uncalibrated, not used for matching) |
 | POST   | `/v1/match/profile`         | `SmeProfile` + `LoanRequest` (+ `?sort=cost|fit`) → ranked lenders + fixes |
 | POST   | `/v1/match`                 | flat `MatchInput` → ranked lenders (for testing rules)   |
 | GET    | `/v1/lenders`               | lender products                                          |

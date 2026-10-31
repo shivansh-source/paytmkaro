@@ -224,7 +224,8 @@ def build_pdf(pages: list[dict], password: str | None = None) -> bytes:
             )
             streams[len(objects)] = jpeg
             resources += f" /XObject << /Im1 {len(objects)} 0 R >>"
-            content.append("q 595 0 0 842 0 0 cm /Im1 Do Q")
+            x, y, w, h = page.get("image_box", (0, 0, 595, 842))
+            content.append(f"q {w} 0 0 {h} {x} {y} cm /Im1 Do Q")
         y, size, leading = 800, page.get("size", 11), page.get("leading", 18)
         for line in page.get("lines", []):
             # A list is a table row: one cell per column x position in page["cols"].
@@ -783,6 +784,25 @@ def main() -> None:
             {"image": render_card(PAN_LINES, (700, 441), 24), "stamp": False},
             # Scan with only a SAMPLE text-layer stamp: must still count as scanned.
             {"image": render_card(AADHAAR_LINES, (700, 441), 24), "stamp": True},
+        ]
+    )
+    # Born-digital letter with an Aadhaar card photo pasted in: the text layer says nothing
+    # about the number, only OCR of the picture can find it.
+    files["letter_with_aadhaar_photo.pdf"] = build_pdf(
+        [
+            {
+                "lines": [
+                    "KUMAR TRADERS (SAMPLE)",
+                    "To: The Branch Manager, Demo Bank A, Pune",
+                    "Subject: Application for a working capital term loan",
+                    "Respected Sir, I request a term loan of Rs. 10,00,000 for my trading business.",
+                    "My identity proof is pasted below for your KYC records.",
+                    "Yours faithfully, R. Kumar, Proprietor",
+                ],
+                "image": render_card(AADHAAR_LINES, (1000, 630), 34).resize((700, 441)),
+                "image_box": (50, 330, 495, 312),
+                "stamp": False,
+            }
         ]
     )
     # Phone scanner app output: a full-page image plus a one-line text footer.

@@ -59,6 +59,25 @@ def test_missing_bureau_and_documents_show_in_fix_it():
     assert profile.readiness.band != "ready"
 
 
+def test_backwards_statement_period_fails_a_check_instead_of_crashing():
+    docs = applicant_a()
+    bank = next(d for d in docs if d.document_type == DocumentType.BANK_STATEMENT)
+    flipped = bank.model_copy(update={"data": bank.data.model_copy(
+        update={"period_from": bank.data.period_to, "period_to": bank.data.period_from})})
+    docs = [flipped if d is bank else d for d in docs]
+
+    result = run(docs, BUREAU_A)
+
+    checked = next(d for d in result.documents if d.document_type == DocumentType.BANK_STATEMENT)
+    period = next(c for c in checked.checks if c.id == "bank.period")
+    assert period.status == "fail" and "backwards" in period.message
+    # Metrics fall back to the transactions, so they match the correctly-dated statement.
+    clean = run(applicant_a(), BUREAU_A).profile.cashflow
+    cash = result.profile.cashflow
+    assert cash.months_analyzed == clean.months_analyzed == 12
+    assert cash.foir.value == clean.foir.value
+
+
 def test_profile_builds_from_a_single_document():
     pan_only = [d for d in applicant_a() if d.document_type == DocumentType.PAN_CARD]
     profile = run(pan_only).profile

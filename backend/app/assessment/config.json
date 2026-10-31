@@ -1,0 +1,898 @@
+{
+ "config_version": "2026.10-placeholder.1",
+ "calibrated": false,
+ "note": "Every weight and band in this file is an UNCALIBRATED placeholder unless weight_source is 'reference'. 'reference' means the weight is the one documented in an internal lender reference scorecard for a parameter we cannot compute yet; it has not been validated for India either. A lender's credit team must calibrate this file against its own default outcomes before the index is used for anything but a conversation starter.",
+ "grades": [
+  {
+   "grade": "strong",
+   "min_index": 75
+  },
+  {
+   "grade": "moderate",
+   "min_index": 55
+  },
+  {
+   "grade": "cautious",
+   "min_index": 35
+  },
+  {
+   "grade": "weak",
+   "min_index": 0
+  }
+ ],
+ "min_coverage_for_grade_pct": 25,
+ "coverage_labels": [
+  {
+   "label": "high",
+   "min_pct": 75
+  },
+  {
+   "label": "moderate",
+   "min_pct": 50
+  },
+  {
+   "label": "partial",
+   "min_pct": 25
+  },
+  {
+   "label": "minimal",
+   "min_pct": 0
+  }
+ ],
+ "critical_failure_grade_cap": "cautious",
+ "confidence": {
+  "unusable_below": 0.5,
+  "review_weight_factor": 0.5,
+  "table_row_share_review": 0.1,
+  "table_row_share_unusable": 0.5
+ },
+ "parameters": {
+  "cp.vintage": {
+   "weight": 2,
+   "weight_source": "placeholder",
+   "bands": [
+    {
+     "min": 60,
+     "points": 100,
+     "label": "five years or more in business"
+    },
+    {
+     "min": 36,
+     "points": 80,
+     "label": "three to five years in business"
+    },
+    {
+     "min": 24,
+     "points": 60,
+     "label": "two to three years in business"
+    },
+    {
+     "min": 12,
+     "points": 40,
+     "label": "one to two years in business: short track record"
+    },
+    {
+     "points": 15,
+     "label": "under one year in business: very short track record"
+    }
+   ]
+  },
+  "cp.constitution": {
+   "weight": 1,
+   "weight_source": "placeholder",
+   "bands": [
+    {
+     "value": "pvt_ltd",
+     "points": 100,
+     "label": "separate legal entity"
+    },
+    {
+     "value": "public_ltd",
+     "points": 100,
+     "label": "separate legal entity"
+    },
+    {
+     "value": "llp",
+     "points": 90,
+     "label": "separate legal entity with limited liability"
+    },
+    {
+     "value": "partnership",
+     "points": 70,
+     "label": "partners are jointly liable"
+    },
+    {
+     "value": "proprietorship",
+     "points": 55,
+     "label": "no legal entity separate from the owner"
+    },
+    {
+     "value": "huf",
+     "points": 55,
+     "label": "family-run structure"
+    },
+    {
+     "value": "trust",
+     "points": 50,
+     "label": "non-commercial structure"
+    },
+    {
+     "value": "society",
+     "points": 50,
+     "label": "non-commercial structure"
+    },
+    {
+     "value": "other",
+     "points": 40,
+     "label": "uncommon structure"
+    }
+   ]
+  },
+  "cp.msme_category": {
+   "weight": 1,
+   "weight_source": "placeholder",
+   "bands": [
+    {
+     "value": "micro",
+     "points": 60,
+     "label": "smallest Udyam size class"
+    },
+    {
+     "value": "small",
+     "points": 75,
+     "label": "mid Udyam size class"
+    },
+    {
+     "value": "medium",
+     "points": 90,
+     "label": "largest Udyam size class"
+    }
+   ]
+  },
+  "cp.udyam_registration": {
+   "weight": 1,
+   "weight_source": "placeholder",
+   "bands": [
+    {
+     "value": "registered",
+     "points": 100,
+     "label": "Udyam number present and well-formed"
+    },
+    {
+     "value": "invalid_format",
+     "points": 20,
+     "label": "Udyam number is not in the standard format"
+    }
+   ]
+  },
+  "cp.gst_registration_tenure": {
+   "weight": 1,
+   "weight_source": "placeholder",
+   "bands": [
+    {
+     "min": 36,
+     "points": 100,
+     "label": "GST-registered for three years or more"
+    },
+    {
+     "min": 24,
+     "points": 80,
+     "label": "GST-registered for two to three years"
+    },
+    {
+     "min": 12,
+     "points": 55,
+     "label": "GST-registered for one to two years"
+    },
+    {
+     "min": 6,
+     "points": 35,
+     "label": "GST-registered for six to twelve months"
+    },
+    {
+     "points": 15,
+     "label": "GST-registered for under six months"
+    }
+   ]
+  },
+  "cp.premises_proof": {
+   "weight": 1,
+   "weight_source": "placeholder",
+   "bands": []
+  },
+  "cp.operating_licence": {
+   "weight": 1,
+   "weight_source": "placeholder",
+   "bands": []
+  },
+  "cp.employee_base": {
+   "weight": 1,
+   "weight_source": "placeholder",
+   "bands": []
+  },
+  "cp.warehouse_status": {
+   "weight": 2,
+   "weight_source": "reference",
+   "bands": []
+  },
+  "cp.sector_view": {
+   "weight": 1,
+   "weight_source": "reference",
+   "bands": []
+  },
+  "sp.itr_filed": {
+   "weight": 2,
+   "weight_source": "placeholder",
+   "bands": [
+    {
+     "max": 1,
+     "points": 100,
+     "label": "latest or previous year's income-tax return filed"
+    },
+    {
+     "max": 2,
+     "points": 55,
+     "label": "income-tax return is two years old"
+    },
+    {
+     "points": 20,
+     "label": "income-tax return is more than two years old"
+    }
+   ]
+  },
+  "sp.itr_income_margin": {
+   "weight": 1,
+   "weight_source": "placeholder",
+   "bands": [
+    {
+     "min": 0.08,
+     "points": 100,
+     "label": "reported income is a healthy share of turnover"
+    },
+    {
+     "min": 0.04,
+     "points": 75,
+     "label": "reported income is a moderate share of turnover"
+    },
+    {
+     "min": 0.02,
+     "points": 50,
+     "label": "reported income is a thin share of turnover"
+    },
+    {
+     "min": 0.01,
+     "points": 30,
+     "label": "reported income is very thin against turnover"
+    },
+    {
+     "points": 10,
+     "label": "reported income is negligible against turnover"
+    }
+   ]
+  },
+  "sp.promoter_net_worth": {
+   "weight": 1,
+   "weight_source": "reference",
+   "bands": []
+  },
+  "bc.bounces_6m": {
+   "weight": 3,
+   "weight_source": "placeholder",
+   "bands": [
+    {
+     "max": 0,
+     "points": 100,
+     "label": "no returned debits"
+    },
+    {
+     "max": 1,
+     "points": 60,
+     "label": "one return: watch"
+    },
+    {
+     "max": 2,
+     "points": 40,
+     "label": "repeated returns: a repayment-stress signal"
+    },
+    {
+     "max": 4,
+     "points": 15,
+     "label": "frequent returns: a strong repayment-stress signal"
+    },
+    {
+     "points": 0,
+     "label": "persistent returns: a very strong repayment-stress signal"
+    }
+   ]
+  },
+  "bc.foir": {
+   "weight": 3,
+   "weight_source": "placeholder",
+   "bands": [
+    {
+     "max": 0.2,
+     "points": 100,
+     "label": "light existing EMI burden"
+    },
+    {
+     "max": 0.35,
+     "points": 80,
+     "label": "manageable existing EMI burden"
+    },
+    {
+     "max": 0.5,
+     "points": 45,
+     "label": "heavy existing EMI burden"
+    },
+    {
+     "max": 0.65,
+     "points": 15,
+     "label": "very heavy existing EMI burden"
+    },
+    {
+     "points": 0,
+     "label": "EMIs absorb most of the cash inflow"
+    }
+   ]
+  },
+  "bc.liquidity_cushion": {
+   "weight": 2,
+   "weight_source": "placeholder",
+   "bands": [
+    {
+     "min": 1.0,
+     "points": 100,
+     "label": "average balance covers a month of inflow"
+    },
+    {
+     "min": 0.6,
+     "points": 80,
+     "label": "comfortable balance cushion"
+    },
+    {
+     "min": 0.3,
+     "points": 55,
+     "label": "moderate balance cushion"
+    },
+    {
+     "min": 0.15,
+     "points": 30,
+     "label": "thin balance cushion"
+    },
+    {
+     "points": 5,
+     "label": "very thin balance cushion"
+    }
+   ]
+  },
+  "bc.revenue_trend": {
+   "weight": 2,
+   "weight_source": "placeholder",
+   "bands": [
+    {
+     "min": 1.1,
+     "points": 100,
+     "label": "bank inflow is growing"
+    },
+    {
+     "min": 0.95,
+     "points": 85,
+     "label": "bank inflow is stable"
+    },
+    {
+     "min": 0.85,
+     "points": 60,
+     "label": "bank inflow is slightly down"
+    },
+    {
+     "min": 0.7,
+     "points": 30,
+     "label": "bank inflow has dropped noticeably"
+    },
+    {
+     "points": 5,
+     "label": "bank inflow has dropped sharply"
+    }
+   ]
+  },
+  "bc.credit_stability": {
+   "weight": 1,
+   "weight_source": "placeholder",
+   "bands": [
+    {
+     "max": 0.15,
+     "points": 100,
+     "label": "very steady monthly inflow"
+    },
+    {
+     "max": 0.3,
+     "points": 75,
+     "label": "reasonably steady monthly inflow"
+    },
+    {
+     "max": 0.5,
+     "points": 45,
+     "label": "uneven monthly inflow"
+    },
+    {
+     "max": 0.75,
+     "points": 20,
+     "label": "very uneven monthly inflow"
+    },
+    {
+     "points": 0,
+     "label": "erratic monthly inflow"
+    }
+   ]
+  },
+  "bc.low_balance_days": {
+   "weight": 1,
+   "weight_source": "placeholder",
+   "bands": [
+    {
+     "max": 0.02,
+     "points": 100,
+     "label": "balance rarely dips below a month of EMI"
+    },
+    {
+     "max": 0.1,
+     "points": 75,
+     "label": "occasional low-balance days"
+    },
+    {
+     "max": 0.25,
+     "points": 45,
+     "label": "frequent low-balance days"
+    },
+    {
+     "max": 0.5,
+     "points": 20,
+     "label": "low balance on a large share of days"
+    },
+    {
+     "points": 0,
+     "label": "balance is low on most days"
+    }
+   ]
+  },
+  "bc.cash_credit_share": {
+   "weight": 1,
+   "weight_source": "placeholder",
+   "bands": [
+    {
+     "max": 0.1,
+     "points": 100,
+     "label": "inflow is almost entirely traceable"
+    },
+    {
+     "max": 0.25,
+     "points": 80,
+     "label": "mostly traceable inflow"
+    },
+    {
+     "max": 0.5,
+     "points": 55,
+     "label": "a large cash share of inflow"
+    },
+    {
+     "max": 0.75,
+     "points": 30,
+     "label": "mostly cash inflow"
+    },
+    {
+     "points": 10,
+     "label": "almost all inflow is cash"
+    }
+   ]
+  },
+  "bc.statement_depth": {
+   "weight": 1,
+   "weight_source": "placeholder",
+   "bands": [
+    {
+     "min": 12,
+     "points": 100,
+     "label": "twelve months or more of statements"
+    },
+    {
+     "min": 9,
+     "points": 80,
+     "label": "nine to twelve months of statements"
+    },
+    {
+     "min": 6,
+     "points": 60,
+     "label": "six to nine months of statements"
+    },
+    {
+     "min": 3,
+     "points": 30,
+     "label": "three to six months of statements"
+    },
+    {
+     "points": 10,
+     "label": "under three months of statements"
+    }
+   ]
+  },
+  "bc.gst_bank_consistency": {
+   "weight": 2,
+   "weight_source": "placeholder",
+   "bands": [
+    {
+     "min": 0.85,
+     "max": 1.15,
+     "points": 100,
+     "label": "GST turnover and bank inflow agree closely"
+    },
+    {
+     "min": 0.7,
+     "max": 1.3,
+     "points": 75,
+     "label": "GST turnover and bank inflow broadly agree"
+    },
+    {
+     "min": 0.5,
+     "max": 1.6,
+     "points": 40,
+     "label": "GST turnover and bank inflow differ: a lender will ask why"
+    },
+    {
+     "points": 10,
+     "label": "GST turnover and bank inflow differ widely"
+    }
+   ]
+  },
+  "bc.gst_filing_timeliness": {
+   "weight": 2,
+   "weight_source": "placeholder",
+   "bands": [
+    {
+     "min": 0.95,
+     "points": 100,
+     "label": "GST returns filed on time"
+    },
+    {
+     "min": 0.8,
+     "points": 75,
+     "label": "GST returns mostly on time"
+    },
+    {
+     "min": 0.6,
+     "points": 45,
+     "label": "GST returns often late"
+    },
+    {
+     "points": 15,
+     "label": "GST returns usually late"
+    }
+   ]
+  },
+  "bc.gst_turnover_trend": {
+   "weight": 1,
+   "weight_source": "placeholder",
+   "bands": [
+    {
+     "min": 1.1,
+     "points": 100,
+     "label": "GST turnover is growing"
+    },
+    {
+     "min": 0.95,
+     "points": 85,
+     "label": "GST turnover is stable"
+    },
+    {
+     "min": 0.85,
+     "points": 60,
+     "label": "GST turnover is slightly down"
+    },
+    {
+     "min": 0.7,
+     "points": 30,
+     "label": "GST turnover has dropped noticeably"
+    },
+    {
+     "points": 5,
+     "label": "GST turnover has dropped sharply"
+    }
+   ]
+  },
+  "bc.turnover_scale": {
+   "weight": 1,
+   "weight_source": "placeholder",
+   "bands": [
+    {
+     "min": 50000000.0,
+     "points": 100,
+     "label": "annual turnover of five crore or more"
+    },
+    {
+     "min": 10000000.0,
+     "points": 85,
+     "label": "annual turnover of one to five crore"
+    },
+    {
+     "min": 2000000.0,
+     "points": 65,
+     "label": "annual turnover of twenty lakh to one crore"
+    },
+    {
+     "min": 500000.0,
+     "points": 40,
+     "label": "annual turnover of five to twenty lakh"
+    },
+    {
+     "points": 15,
+     "label": "annual turnover under five lakh"
+    }
+   ]
+  },
+  "bc.customer_concentration": {
+   "weight": 2,
+   "weight_source": "placeholder",
+   "bands": []
+  },
+  "bc.od_utilisation": {
+   "weight": 2,
+   "weight_source": "placeholder",
+   "bands": []
+  },
+  "bc.pg_settlements": {
+   "weight": 2,
+   "weight_source": "placeholder",
+   "bands": []
+  },
+  "bc.macro_shock": {
+   "weight": 1,
+   "weight_source": "reference",
+   "bands": []
+  },
+  "bc.margin_facility": {
+   "weight": 3,
+   "weight_source": "reference",
+   "bands": []
+  },
+  "bc.facility_trend": {
+   "weight": 1,
+   "weight_source": "reference",
+   "bands": []
+  },
+  "fn.revenue_growth_yoy": {
+   "weight": 2,
+   "weight_source": "placeholder",
+   "bands": []
+  },
+  "fn.net_margin": {
+   "weight": 2,
+   "weight_source": "placeholder",
+   "bands": []
+  },
+  "fn.leverage": {
+   "weight": 2,
+   "weight_source": "placeholder",
+   "bands": []
+  },
+  "fn.dscr": {
+   "weight": 3,
+   "weight_source": "placeholder",
+   "bands": []
+  },
+  "fn.unit_economics": {
+   "weight": 3,
+   "weight_source": "reference",
+   "bands": []
+  },
+  "rb.consumer_score": {
+   "weight": 3,
+   "weight_source": "placeholder",
+   "bands": [
+    {
+     "min": 750,
+     "points": 100,
+     "label": "strong bureau score"
+    },
+    {
+     "min": 700,
+     "points": 80,
+     "label": "good bureau score"
+    },
+    {
+     "min": 650,
+     "points": 55,
+     "label": "fair bureau score"
+    },
+    {
+     "min": 600,
+     "points": 30,
+     "label": "weak bureau score"
+    },
+    {
+     "points": 10,
+     "label": "very weak bureau score"
+    }
+   ]
+  },
+  "rb.cmr": {
+   "weight": 3,
+   "weight_source": "placeholder",
+   "bands": []
+  },
+  "rb.worst_dpd_24m": {
+   "weight": 3,
+   "weight_source": "placeholder",
+   "bands": []
+  },
+  "rb.enquiries_90d": {
+   "weight": 1,
+   "weight_source": "placeholder",
+   "bands": []
+  },
+  "rb.adverse_flags": {
+   "weight": 3,
+   "weight_source": "reference",
+   "bands": []
+  },
+  "rb.voluntary_disclosure": {
+   "weight": 1,
+   "weight_source": "reference",
+   "bands": []
+  },
+  "rb.company_assets": {
+   "weight": 1,
+   "weight_source": "reference",
+   "bands": []
+  },
+  "rb.responsiveness": {
+   "weight": 1,
+   "weight_source": "reference",
+   "bands": []
+  },
+  "di.balance_math": {
+   "weight": 3,
+   "weight_source": "placeholder",
+   "bands": [
+    {
+     "value": "pass",
+     "points": 100,
+     "label": "every bank-statement row reconciles"
+    },
+    {
+     "value": "warn",
+     "points": 50,
+     "label": "minor reconciliation issue in the bank statement"
+    },
+    {
+     "value": "fail",
+     "points": 0,
+     "label": "bank statement does not reconcile: possible edit or misread, so statement-derived figures are unverified"
+    }
+   ]
+  },
+  "di.statement_gaps": {
+   "weight": 2,
+   "weight_source": "placeholder",
+   "bands": [
+    {
+     "value": "pass",
+     "points": 100,
+     "label": "no missing months"
+    },
+    {
+     "value": "warn",
+     "points": 50,
+     "label": "minor gap in the supporting statements"
+    },
+    {
+     "value": "fail",
+     "points": 0,
+     "label": "a month is missing from the supporting statements"
+    }
+   ]
+  },
+  "di.tax_registration_link": {
+   "weight": 2,
+   "weight_source": "placeholder",
+   "bands": [
+    {
+     "value": "pass",
+     "points": 100,
+     "label": "PAN embedded in the GSTIN matches the PAN card"
+    },
+    {
+     "value": "fail",
+     "points": 0,
+     "label": "PAN embedded in the GSTIN does not match the PAN card"
+    }
+   ]
+  },
+  "di.name_match": {
+   "weight": 1,
+   "weight_source": "placeholder",
+   "bands": [
+    {
+     "value": "pass",
+     "points": 100,
+     "label": "name agrees across documents"
+    },
+    {
+     "value": "warn",
+     "points": 50,
+     "label": "name is a near-match across documents and needs confirmation"
+    },
+    {
+     "value": "fail",
+     "points": 0,
+     "label": "name differs across documents"
+    }
+   ]
+  },
+  "di.premises_agreement": {
+   "weight": 1,
+   "weight_source": "placeholder",
+   "bands": [
+    {
+     "value": "pass",
+     "points": 100,
+     "label": "address agrees across documents"
+    },
+    {
+     "value": "warn",
+     "points": 50,
+     "label": "address differs slightly across documents"
+    },
+    {
+     "value": "fail",
+     "points": 0,
+     "label": "address differs across documents"
+    }
+   ]
+  },
+  "di.kyc_record_match": {
+   "weight": 1,
+   "weight_source": "placeholder",
+   "bands": [
+    {
+     "value": "pass",
+     "points": 100,
+     "label": "PAN and Aadhaar records agree"
+    },
+    {
+     "value": "warn",
+     "points": 50,
+     "label": "PAN and Aadhaar records could not be fully compared"
+    },
+    {
+     "value": "fail",
+     "points": 0,
+     "label": "PAN and Aadhaar records disagree"
+    }
+   ]
+  },
+  "di.low_confidence_fields": {
+   "weight": 1,
+   "weight_source": "placeholder",
+   "bands": [
+    {
+     "max": 0,
+     "points": 100,
+     "label": "every extracted field read with high confidence"
+    },
+    {
+     "max": 0.05,
+     "points": 80,
+     "label": "a few fields need confirmation"
+    },
+    {
+     "max": 0.15,
+     "points": 50,
+     "label": "several fields need confirmation"
+    },
+    {
+     "points": 20,
+     "label": "many fields need confirmation"
+    }
+   ]
+  }
+ }
+}
