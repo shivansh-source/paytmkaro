@@ -1,27 +1,26 @@
-from typing import Literal
+from fastapi import APIRouter, File, Form, UploadFile
 
-from fastapi import APIRouter
-from pydantic import BaseModel, Field
+from app.intake import UploadResult, default_engines, process_upload
+from app.schemas import DocumentType
 
 router = APIRouter(tags=["documents"])
 
 
-class DocumentUploadRequest(BaseModel):
-    sme_id: str = Field(min_length=1)
-    document_type: str = Field(min_length=1)
-    file_name: str = Field(min_length=1)
+@router.post("/documents", response_model=UploadResult)
+def upload_document(
+    file: UploadFile = File(...),
+    sme_id: str = Form(..., min_length=1, max_length=64),
+    document_type: DocumentType | None = Form(None),  # the slot the SME chose; a hint, not trusted
+    password: str | None = Form(None),  # for password-protected PDFs (e-Aadhaar, bank statements)
+) -> UploadResult:
+    """One file -> ingest, classify, extract -> envelopes ready for /v1/assess.
 
-
-class DocumentUploadResponse(BaseModel):
-    job_id: str
-    status: Literal["queued"]
-    next_step: str
-
-
-@router.post("/documents", response_model=DocumentUploadResponse)
-def create_document_upload(request: DocumentUploadRequest) -> DocumentUploadResponse:
-    return DocumentUploadResponse(
-        job_id=f"job-{request.sme_id}-{request.document_type}",
-        status="queued",
-        next_step="Run extraction + cross-document checks asynchronously",
+    Always 200: `status` says whether the file could be opened (`password_required` asks for a password),
+    `documents` holds what was read, `skipped` the parts we couldn't use and why. Nothing is stored.
+    """
+    data = file.file.read()
+    ocr, vlm = default_engines()
+    return process_upload(
+        data, file.filename or "upload", sme_id=sme_id, expected_type=document_type,
+        password=password or None, mime_type=file.content_type, ocr=ocr, vlm=vlm,
     )

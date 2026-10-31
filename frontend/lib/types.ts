@@ -55,6 +55,24 @@ export interface Envelope {
   error?: string | null;
 }
 
+// POST /v1/documents: one file can hold several documents (a PDF with PAN + Aadhaar).
+export type LoadStatus = "ok" | "password_required" | "unsupported_format" | "unreadable" | "too_large";
+
+export interface SkippedPart {
+  pages: number[]; // 1-based
+  document_type: string;
+  reason: string;
+}
+
+export interface UploadResult {
+  file_name: string;
+  status: LoadStatus;
+  message?: string | null;
+  documents: Envelope[];
+  skipped: SkippedPart[];
+  warnings: string[];
+}
+
 export interface Sourced<T> {
   value: T;
   evidence: { document_id: string; field: string }[];

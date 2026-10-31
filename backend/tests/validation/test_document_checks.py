@@ -1,69 +1,7 @@
-from datetime import date
-
-import pytest
-
+"""Per-document and cross-document checks on the sample applicants (incl. B's 3 planted problems)."""
 from app.samples import AS_OF, applicant_a, applicant_b
 from app.schemas import CheckStatus, CrossCheck, DocumentType
-from app.schemas.documents import Transaction
 from app.validation import validate_all
-from app.validation.checksums import aadhaar_valid, gstin_check_digit, gstin_checksum_valid, verhoeff_check_digit, verhoeff_valid
-from app.validation.tagging import tag_transaction
-from app.validation.text import compare_addresses, compare_names
-
-
-def test_verhoeff_textbook_example():
-    assert verhoeff_check_digit("236") == "3"
-    assert verhoeff_valid("2363")
-    assert not verhoeff_valid("2364")
-
-
-def test_aadhaar_rules():
-    body = "23456789012"
-    assert aadhaar_valid(body + verhoeff_check_digit(body))
-    assert not aadhaar_valid("1" + body[1:] + "0")  # can't start with 0/1
-    assert not aadhaar_valid("1234")
-
-
-def test_gstin_checksum():
-    assert gstin_checksum_valid("27AAPFU0939F1ZV")  # published example
-    assert not gstin_checksum_valid("27AAPFU0939F1ZW")
-    assert gstin_check_digit("27AAPFU0939F1Z") == "V"
-
-
-@pytest.mark.parametrize(
-    ("a", "b", "expected"),
-    [
-        ("RAVI KUMAR", "Ravi  Kumar", CheckStatus.PASS),
-        ("RAVI KUMAR", "Mr. Ravi Kumar", CheckStatus.PASS),
-        ("RAVI KUMAR", "KUMAR RAVI", CheckStatus.PASS),
-        ("RAVI KUMAR", "R. KUMAR", CheckStatus.WARN),
-        ("RAVI KUMAR", "RAVI KUMAAR", CheckStatus.WARN),
-        ("RAVI KUMAR", "SUNITA SHARMA", CheckStatus.FAIL),
-    ],
-)
-def test_name_matching(a, b, expected):
-    assert compare_names(a, b) == expected
-
-
-def test_address_matching():
-    home = "12 Gandhi Bazaar Main Road, Basavanagudi, Bengaluru 560004"
-    assert compare_addresses(home, "No 12, Gandhi Bazaar, Basavanagudi, Bengaluru - 560004") == CheckStatus.PASS
-    assert compare_addresses(home, "44 MG Road, Pune 411001") == CheckStatus.FAIL
-
-
-@pytest.mark.parametrize(
-    ("narration", "debit", "credit", "tags"),
-    [
-        ("NACH RTN INSUFFICIENT FUNDS SAMPLE NBFC", 0, 40000, {"bounce", "nach"}),
-        ("NACH RTN CHGS INCL GST", 590, 0, {"charges", "nach"}),
-        ("NACH/DR/SAMPLE NBFC LOAN EMI", 40000, 0, {"emi", "nach"}),
-        ("UPI/CR/SAMPLE RETAIL CUSTOMERS", 0, 24000, {"upi"}),
-        ("CHQ RETURNED - DISHONOURED", 0, 15000, {"bounce"}),
-    ],
-)
-def test_transaction_tagging(narration, debit, credit, tags):
-    txn = Transaction(date=date(2026, 4, 5), narration=narration, debit=debit, credit=credit, balance=0)
-    assert set(tag_transaction(txn).tags) == tags
 
 
 def _cross(envelopes):

@@ -46,7 +46,7 @@ export default function ReviewPage() {
       <PageHeader eyebrow="Step 3 of 6" title="What we checked">
         {problems === 0
           ? "Every document is consistent with the others. Nothing for you to fix here."
-          : `${problems} thing${problems > 1 ? "s" : ""} need your attention before lenders see your file.`}
+          : `${problems} thing${problems > 1 ? "s" : ""} need${problems > 1 ? "" : "s"} your attention before lenders see your file.`}
       </PageHeader>
       <ErrorNote error={error} />
 

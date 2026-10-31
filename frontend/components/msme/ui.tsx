@@ -10,13 +10,12 @@ export function CheckIcon({ status }: { status: CheckStatus }) {
   );
 }
 
-const DOC_STATUS: Record<DocumentStatus | "missing" | "received", { label: string; tone: string }> = {
+const DOC_STATUS: Record<DocumentStatus | "missing", { label: string; tone: string }> = {
   verified: { label: "Verified", tone: "ok" },
   needs_review: { label: "Needs review", tone: "warn" },
   failed: { label: "Couldn't read", tone: "bad" },
   queued: { label: "Queued", tone: "neutral" },
   extracting: { label: "Reading…", tone: "neutral" },
-  received: { label: "Received · waiting for extraction", tone: "neutral" },
   missing: { label: "Not uploaded", tone: "neutral" }
 };
 

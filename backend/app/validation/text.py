@@ -28,7 +28,24 @@ def _initials_compatible(a: list[str], b: list[str]) -> bool:
     return all(x == y or (len(x) == 1 and y.startswith(x)) or (len(y) == 1 and x.startswith(y)) for x, y in zip(a, b))
 
 
+_BRACKETED = re.compile(r"^(.*?)\((.*?)\)(.*)$")
+_RANK = {CheckStatus.PASS: 0, CheckStatus.WARN: 1, CheckStatus.FAIL: 2}
+
+
+def _variants(name: str) -> list[str]:
+    """Banks often add the business in brackets: 'R. KUMAR (KUMAR TRADERS)'. Try with and without it."""
+    variants = [name]
+    if m := _BRACKETED.match(name):
+        variants += [m.group(1) + m.group(3), m.group(2)]
+    return variants
+
+
 def compare_names(a: str, b: str) -> CheckStatus:
+    """Best result over bracket variants of either name; a different person still fails."""
+    return min((_compare(x, y) for x in _variants(a) for y in _variants(b)), key=_RANK.__getitem__)
+
+
+def _compare(a: str, b: str) -> CheckStatus:
     na, nb = normalize_name(a), normalize_name(b)
     if not na or not nb:
         return CheckStatus.FAIL

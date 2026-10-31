@@ -4,7 +4,7 @@ MSME side (common, documents, profile): Pydantic is the source of truth; JSON Sc
 into /schemas/v1/msme by `python -m scripts.export_schemas` (run from backend/). Never edit it by hand.
 
 Lender side (lender): the hand-written JSON Schema in /schemas/v1/lender is the source of truth;
-lender.py mirrors it and tests/test_lender_schema.py fails if they drift. Edit the JSON first.
+lender.py mirrors it and tests/schemas/test_lender_schema.py fails if they drift. Edit the JSON first.
 """
 
 from app.schemas.common import (

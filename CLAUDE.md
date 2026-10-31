@@ -8,21 +8,21 @@ working name ("setu" = bridge).
 **One-liner:** weeks of paperwork and lender-hopping become one application and a matched, explained
 shortlist in under a day. The lender still makes the credit decision, on a complete, verified file.
 
-## Who owns what
+## How the team works
 
-- **Lakshya:** OCR / VLM extraction (`backend/app/documents/`: ingest, classify, extract) **and the
-  scoring engine (`backend/app/scoring/`: metrics, readiness score, fix-it list)**. He owns and improves
-  the existing scoring code and its tests (`tests/test_scoring.py`); no parallel version. His older
-  `app/documents/extract/features.py` duplicates validation + scoring and is superseded.
-  Extraction contract: output must become `DocumentEnvelope` (`schemas/v1/msme/`); Aadhaar is masked in
-  his layer (Verhoeff on the full number, then only `aadhaar_last4` leaves it); values that fail
-  validation must be kept (low confidence) rather than dropped, so checks can show ✗ and the user can
-  confirm. Coordinate before changing `SmeProfile` / `CashflowMetrics` / `Readiness` shapes: both
-  dashboards, the engine adapter and lender applications read them.
-- **Anansh:** lender schema. Owns `schemas/v1/lender/lender_product.schema.json` and lender records.
-- **Shivansh (with Claude):** validation (`app/validation/`), recommendation engine, offers/KFS, landing
-  page, login, the MSME dashboard **and the lender side** (applications + lender screens).
-  Transaction tagging (bounce / EMI / NACH) from narrations happens in validation, not extraction.
+No one owns any part of the code: all three of us work on everything together. Before changing a
+shared contract, tell the others, because several parts read it:
+- `SmeProfile` / `CashflowMetrics` / `Readiness` are read by both dashboards, the engine adapter, lender
+  applications and the assessment engine.
+- `DocumentEnvelope` is the extraction contract: extraction output must become it (`schemas/v1/msme/`).
+  Aadhaar is masked in the extraction layer (Verhoeff on the full number, then only `aadhaar_last4`
+  leaves it). Values that fail validation are kept (low confidence), not dropped, so checks can show ✗
+  and the user can confirm.
+- The lender schema `schemas/v1/lender/lender_product.schema.json` is the source of truth for lenders.
+
+Placement rules worth keeping: transaction tagging (bounce / EMI / NACH) from narrations happens in
+validation, not extraction. Keep one scoring implementation (`app/scoring/`);
+`app/documents/extract/features.py` is an older duplicate of validation + scoring and is superseded.
 
 ## Product in brief
 
@@ -71,26 +71,32 @@ backend/                 FastAPI (Python 3.13)
                          understand.py reads free-typed answers (rules, then Sarvam)
     llm/                 LLM clients (Sarvam). Human-facing only: understanding / explaining, never deciding
     applications/        MSME → lender applications (SQLite), consent, decisions, demo seed
-    documents/           Lakshya's ingest / classify / extract pipeline (OCR, VLM)
+    documents/           ingest / classify / extract pipeline (OCR, VLM, privacy masking)
+    intake/              upload → pipeline → DocumentEnvelope: bridge.py (field mapping), upload.py
+    assessment/          indicative lender ScoreCard (51-parameter registry, DESIGN.md)
   data/
     lenders.json         mock lender products (edit freely; re-read on every request)
     sample_profiles/     MatchInput fixtures: applicant_a.json (clean), applicant_b.json (messy)
+  schemas/documents/v1/  extraction output schemas (incl. 5 new types, see "What's left")
   scripts/export_schemas.py   regenerates /schemas from the Pydantic models
-  tests/                 pytest
+  tests/                 pytest, one folder per app package (see "Tests")
 schemas/v1/msme/         GENERATED from Pydantic (never edit by hand)
 schemas/v1/lender/       HAND-WRITTEN lender JSON Schema: source of truth for the lender side
 frontend/                Next.js 14 app router, TypeScript, no Tailwind (plain CSS)
   app/page.tsx           landing page
-  app/globals.css        all styles
-  app/register/          placeholder for registration (dashboard to be built separately)
-  app/sme/               placeholder SME journey page
+  app/globals.css        landing styles; app/dashboard.css: login + both dashboards
+  app/register/          role choice → details → mock OTP
+  app/msme/              MSME dashboard (start, upload, review, readiness, matches, offer, applications)
+  app/lender/            lender inbox, application page, criteria
+  components/            landing/, auth/, msme/ (MsmeProvider, Shell), lender/, DocumentCard
   components/landing/    BgVideo, AsciiVideo, LandingMotion
   public/media/          compressed background videos + poster jpgs
   movies/                raw stock footage, gitignored, never commit
 ```
 
-Convention: each pipeline stage gets its own package under `backend/app/` (`documents/`, `scoring/`,
-`offers/` next); routes in `api/v1/` only call into those packages.
+Convention: each pipeline stage gets its own package under `backend/app/` (`documents/`, `validation/`,
+`scoring/`, `recommendation/`, `offers/`, …) with tests in the matching `tests/` folder; routes in
+`api/v1/` only call into those packages.
 
 ## Commands
 
@@ -101,6 +107,7 @@ python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\act
 pip install -r requirements-dev.txt
 uvicorn app.main:app --reload        # http://localhost:8000/docs
 pytest                                # pythonpath configured in pyproject.toml
+pytest tests/validation               # one area only (folders listed under "Tests")
 
 # frontend
 cd frontend
@@ -109,12 +116,41 @@ npm run dev                           # http://localhost:3000
 npm run build                         # must pass before committing
 ```
 
+### Tests (`backend/tests/`, one folder per app package)
+
+```
+conftest.py        autouse: no real Sarvam call, fresh SQLite applications store per test
+schemas/           test_msme_schemas (exported JSON up to date, privacy types), test_lender_schema (JSON ↔ Pydantic drift)
+validation/        test_checksums, test_text_matching, test_tagging, test_document_checks (A clean, B's 3 problems)
+scoring/           test_scoring (metrics, readiness, fix-it)
+assessment/        ScoreCard tests + test_score_api
+recommendation/    test_engine_rules (one rule at a time), test_recommendation (ranking, fixes, demo expectations)
+offers/            test_kfs (EMI, fees, true APR)
+questionnaire/     test_prequalify (estimates, checklist), test_understand (free text: rules, fake LLM, guardrails)
+applications/      test_applications (consent, re-assess, decisions)
+api/               test_demo_flow (assess → match → offer through HTTP, samples)
+intake/            test_bridge (pipeline → envelope, kept failed reads, boxes, privacy), test_upload_api
+documents/         ingest / classify / extract / privacy tests (own conftest with skip guards)
+fixtures/          sample .docx/.pdf inputs + make_sample_documents.py
+```
+
+New tests go in the folder of the package they test. There are no `__init__.py` files (pytest's default
+import mode), so **test file names must be unique across folders**. Baseline: 527 passed, 7 skipped.
+
 The dashboard calls `/api/v1/*`, which `next.config.mjs` rewrites to FastAPI (`BACKEND_URL`, default
 `http://localhost:8000`), so run the backend alongside the frontend. No CORS setup needed.
 
 **AI keys** live in `backend/.env` (git-ignored, loaded by `app/config.py`): `SARVAM_API_KEY` (free-text
-questionnaire), `GROQ_API_KEY` (Lakshya's VLM). Never paste keys in chat or commit them. Tests never call a
-real model: `tests/conftest.py` blanks `SARVAM_API_KEY`, and `tests/test_understand.py` injects a fake.
+questionnaire), `GROQ_API_KEY` (VLM fallback for photos). Never paste keys in chat or commit them. Tests never call a
+real model: `tests/conftest.py` blanks `SARVAM_API_KEY`, `tests/questionnaire/test_understand.py` injects a fake,
+and `tests/intake/conftest.py` gives the upload route no OCR / VLM (tests pass `FakeOcr`). Real-engine tests are
+opt-in: `RUN_OCR_TESTS=1`, `RUN_VLM_TESTS=1`.
+
+**OCR / VLM for uploads.** Digital PDFs, spreadsheets, Word and CSV need neither. Photos and scans need
+**PaddleOCR** (in `requirements.txt`, about 1 GB; models download on first use, then ~8 s per photo on CPU).
+The Groq VLM only fills what text/OCR missed. **Without PaddleOCR the VLM is off for uploads** (images would
+leave the server before any Aadhaar number was blacked out); `VLM_WITHOUT_OCR=1` overrides that knowingly.
+Free-tier Groq can take 40-80 s on a photo (rate limits), so the Next proxy timeout is raised to 180 s.
 Principle for any new AI feature: **AI reads and explains; code computes and decides.**
 
 Gotchas seen so far: `uvicorn --reload` on Windows sometimes misses **new** files (new routes 404 until a
@@ -154,9 +190,13 @@ matches to `localStorage` so a refresh mid-demo is safe):
    "no loans, no bounces"); values are range-checked; nothing is guessed. The chat echoes "Got it: …" and
    skips questions already answered. No key / Sarvam down → rules + chips still work.
 1. `/msme/upload`: 6 required documents + optional ITR-V, marked required / recommended / optional /
-   not needed from the questionnaire (link to the questionnaire if it was never opened). Extraction isn't wired yet, so a chosen file
-   shows "received, waiting for extraction"; **"Load sample applicant A / B"** runs the real pipeline
-   via `GET /v1/samples/{a|b}` → `POST /v1/assess`.
+   not needed from the questionnaire (link to the questionnaire if it was never opened). Choosing a file
+   **uploads it** (`POST /v1/documents`, "Reading…" while it runs; GSTR-3B takes several files), then the
+   provider re-assesses every uploaded envelope (`/v1/assess`, latest result wins if uploads overlap). A new
+   upload replaces the same document type; GSTR-3B months add up. Locked PDFs show a password box; parts we
+   can't use show the reason ("looks like a photo and OCR isn't on", "bureau report: not scored yet"). The
+   `sme_id` is `SME-<mobile>`. **"Load sample applicant A / B"** still loads the synthetic applicants
+   (`GET /v1/samples/{a|b}`) and clears uploads.
 2. `/msme/review`: cross-checks (name warning has "Yes, same person", which sets `user_confirmed` and
    re-assesses; the backend then passes a near-match but never a different person), per-document
    checks, fields with confidence, "Confirm" for low-confidence fields, and the exact rows that break
@@ -175,8 +215,9 @@ readiness ring, red flags / warnings, fit, true APR, status), **application page
 cash flow with evidence links that jump to `#field-{doc}-{field}`, fit against the lender's own rules,
 EMI / true APR / FOIR after this loan, identity, read-only `DocumentCard`s, consent, history, decision
 panel; opening a new application marks it in review), **Your criteria** (read-only lender products).
-Applications use their own server-side profile: `submit()` re-runs `assess()` on the documents, so a
-browser can't edit what lenders see. Demo seed: 3 applications under `SEED-A` / `SEED-B` (so live demos
+Applications use their own server-side profile: `submit()` re-runs `assess()` on the documents it is
+sent, so lenders see our checks' results, not a profile the browser computed (documents are still
+browser-supplied until uploads are stored server-side). Demo seed: 3 applications under `SEED-A` / `SEED-B` (so live demos
 with SAMPLE-A / SAMPLE-B start clean); DB file `backend/data/creditsetu.sqlite3` (git-ignored;
 `CREDITSETU_DB`, `CREDITSETU_SEED=0` in tests via `tests/conftest.py`).
 
@@ -190,7 +231,7 @@ client-side navigation. `lib/types.ts` mirrors the backend contracts the UI read
 
 | Method | Path                        | Status                            |
 | ------ | --------------------------- | --------------------------------- |
-| POST   | `/v1/documents`             | stub                                                     |
+| POST   | `/v1/documents`             | multipart `file`, `sme_id`, optional `document_type` (slot hint) + `password` → `UploadResult`: envelopes, skipped parts with reasons, warnings. Always 200; `status` says `password_required` / `unsupported_format` / … Nothing stored |
 | GET    | `/v1/profile/{sme_id}`      | stub (no storage yet)                                    |
 | POST   | `/v1/assess`                | envelopes → checked documents + `SmeProfile`             |
 | POST   | `/v1/score`                 | same body as `/v1/assess` → indicative `ScoreCard` (`app/assessment`; weights uncalibrated, not used for matching) |
@@ -206,15 +247,16 @@ client-side navigation. `lib/types.ts` mirrors the backend contracts the UI read
 | GET    | `/v1/applications/{id}`     | full application: profile, documents, match, history   |
 | POST   | `/v1/applications/{id}/decision` | lender: start_review / approve_in_principle / request_info (note) / decline (reason) |
 
-Demo flow: `/v1/assess` → `/v1/match/profile` → `/v1/offers/{id}/explain`. Nothing is persisted yet;
+Demo flow: `/v1/documents` (per file) → `/v1/assess` → `/v1/match/profile` → `/v1/offers/{id}/explain`. Nothing is persisted yet;
 the client passes the profile back. Storage + `sme_id`-based lookups come later.
 
 ## Pipeline: validation → scoring → engine → offers
 
-All deterministic, all run on synthetic data today (`app/samples/`), and on Lakshya's envelopes later.
+All deterministic, all run on synthetic data today (`app/samples/`), and on extracted envelopes later.
 
 - **`app/validation/`**: `checksums.py` (Verhoeff, GSTIN check digit, state codes), `text.py` (fuzzy
-  name / address match: exact = pass, initials or near-spelling = warn), `tagging.py` (bounce / EMI /
+  name / address match: exact = pass, initials or near-spelling = warn; a bracketed business name as in
+  "R. KUMAR (KUMAR TRADERS)" is tried with and without the brackets), `tagging.py` (bounce / EMI /
   NACH / charges / UPI / cash / GST from narrations; a bounce charge line is `charges`, not a second
   bounce, and "CHGS INCL GST" is not a GST payment), `documents.py` (per-document checks, check ids like
   `pan.format`, `bank.balance_math`, plus a `*.needs_review` warning listing low-confidence fields),
@@ -241,12 +283,12 @@ Shared contracts for extraction (OCR/VLM), validation, the MSME dashboard, the l
 engine. **The two sides have different sources of truth, on purpose:**
 
 - **MSME side: Pydantic is the source of truth.** After changing a model run
-  `python -m scripts.export_schemas` from `backend/`; `tests/test_schemas.py` fails if
+  `python -m scripts.export_schemas` from `backend/`; `tests/schemas/test_msme_schemas.py` fails if
   `/schemas/v1/msme` is stale. Bump `SCHEMA_VERSION` on breaking changes.
 - **Lender side: JSON is the source of truth.** `schemas/v1/lender/lender_product.schema.json`
-  (hand-written by Anansh, JSON Schema draft 2020-12, 87 fields) is authoritative. `lender.py` mirrors
+  (hand-written, JSON Schema draft 2020-12, 87 fields) is authoritative. `lender.py` mirrors
   it as Pydantic (`LenderProduct`, `LenderCatalog`) for the engine. Change the JSON first, then mirror
-  it; `tests/test_lender_schema.py` fails on any drift (fields, required, enum values, all 16
+  it; `tests/schemas/test_lender_schema.py` fails on any drift (fields, required, enum values, all 16
   sub-objects) and validates `backend/data/lenders.json` + the example against both. Never generate the
   lender JSON from Python. `allowed_constitutions` uses the same values as MSME `Constitution`.
 - `common.py`: `Extracted[T]` (value + confidence + source + bbox + raw_text + user_confirmed, with a
@@ -312,6 +354,25 @@ Demo expectations (covered by tests, full pipeline from documents): Applicant A 
 Applicant B is "not yet" for Demo Bank A with vintage / turnover / bureau / bounce fixes and matched for
 Demo NBFC B. At ₹14 lakh, B's Demo Finance C becomes a quick fix ("Ask for ₹12,00,000 or less").
 
+## Assessment engine (`backend/app/assessment/`, PR #6)
+
+Lender-facing **indicative** `ScoreCard`: `score_sme(profile, validated_documents, as_of=...)`, exposed as
+`POST /v1/score` (same body as `/v1/assess`). Full design, registry table, math and fairness policy in
+`app/assessment/DESIGN.md` (drift-tested against `registry.py` + `config.json`).
+
+- 51 parameters, each shown as computed / pending / not_applicable with value, band, points, weight,
+  reason and evidence refs. Index 0-100 = weighted mean over *available* weight, with coverage % beside
+  it; bands strong / moderate / cautious / weak / insufficient_data (< 25% coverage). Failed balance math
+  or a PAN/GSTIN mismatch caps the grade at "cautious".
+- **Not** readiness (readiness = is the file complete and consistent, for the SME), **not** a probability
+  of default, and **not used for lender matching** (matching stays on documented lender criteria).
+- Only 11 weights come from the reference scorecard; the other 40 are **uncalibrated placeholders**. Say
+  "indicative" in any UI or pitch.
+- Field lock keeps personal identifiers out of the feature table; age, state and pincode are never scored.
+- Not shown in the lender UI yet. Many pending parameters need schema additions proposed in
+  DESIGN.md §7 (bureau report details, financial statements, sanction letter, settlement report,
+  hashed counterparty key): these touch `SmeProfile` / `DocumentEnvelope`, so agree as a team first.
+
 ## Landing page (`frontend/`)
 
 Inspired by the *feel* of worldquant.com (dark, huge type, scroll-driven motion). Never copy their
@@ -353,17 +414,56 @@ particles compress badly and lower settings looked blurry).
 Translations on the languages section (Hindi, Kannada, Tamil) were machine-drafted: get a native
 speaker to check before demoing. Score 82, ₹ figures and "R. Kumar" are sample data.
 
-## Open items (from the team's notes)
+## Status and what's left (as of 31 Oct 2026, main @ PR #6)
 
-- Final product name; VLM choice (hosted vs self-hosted) and the privacy answer.
-- Business-model fee numbers (suggested: success fee 1–2%, lead fee ~₹300–500, SaaS ~₹25–50k/mo).
-- Confirm MVP scope (currently 3 document types, 5 mock lenders, Hindi + English).
-- Generate synthetic documents for Applicant A (clean) and B (3 planted errors: name mismatch on bank
-  statement, one missing month, one edited row breaking balance math).
-- Mock lenders: 3 of 5 exist. Missing: Mudra-style micro loan and CGTMSE collateral-free loan; check
-  official scheme limits before adding.
-- Registration flow and dashboard (separate from the landing page).
+**Built (on main):**
+- **MSME side:** questionnaire with Sarvam free text → upload → review → readiness → matches → KFS offer
+  → apply → application status.
+- **Lender side:** inbox, application page, decisions, criteria.
+- **Recommendation engine** (matching, ranking, "not yet" fixes) and KFS / true APR.
+- **Scoring engine:** validation, metrics, readiness, fix-it, plus the indicative assessment engine and
+  `/v1/score` (PR #6).
+- Landing page, login, extractor + classifier (PR #3).
+
+- **Uploads connected to extraction** (`app/intake/`, `POST /v1/documents`, upload page): real files go
+  ingest → classify → extract → envelope → assess. Verified on Lakshya's fixtures: digital PDFs, XLSX, a
+  bundled PDF (split per document), a password-protected e-Aadhaar, phone photos via PaddleOCR (with boxes).
+
+The demo runs end to end on uploaded files **and** on the built-in sample applicants.
+
+**Next (the demo needs these):**
+1. **Real sample documents** for Applicant A (clean) and B (3 planted problems), stamped SAMPLE: PAN and
+   Aadhaar as phone photos, GST REG-06 + 6 GSTR-3B as PDFs, a scanned bank statement, Udyam. They should
+   reproduce `app/samples/applicants.py` so the same checks fire on uploads. Lakshya's
+   `tests/fixtures/make_sample_documents.py` already writes PDFs/images; extend it rather than start over.
+2. **Highlight boxes on the review page:** envelopes now carry `bbox` for OCR'd fields, but the review page
+   doesn't show the document image yet (needs the page image served or returned with the upload).
+3. **Store uploads server-side** (encrypted): today envelopes live in the browser and are sent back to
+   `/v1/assess` and `/v1/applications`. Applications should reference stored document ids so a browser can't
+   alter what lenders see. Pairs with the encryption item.
+4. WIP commit `1e8640c` (five new document types in classify / extract) was flagged "unreviewed": review it
+   before relying on it. Those types are read but skipped at upload ("not used in your score yet").
+5. Aadhaar address is often not read (seen on the e-Aadhaar fixture): check the extractor.
+6. Discussed, not built: mock **Account Aggregator** (bank data by consent, no OCR) and mock **DigiLocker**
+   (PAN / Aadhaar / GST pulled verified), both feeding `/v1/assess` directly; **encryption at rest** for stored
+   uploads and the applications DB; **Docker** compose for backend + frontend.
+
+**Later, as polish (AI layer, deliberately postponed):**
+- Sarvam explaining offers and fixes in Hindi and English (narrates engine output, never changes it), plus
+  voice for the offer summary.
+- An AI credit summary on the lender application page.
+- Lender policy PDF → criteria record (a human confirms it).
+- Possibly the assessment ScoreCard on the lender page, labelled "indicative".
+
+**Smaller items:**
+- Mock lenders: 3 of 5 exist. Missing: Mudra-style micro loan and CGTMSE collateral-free loan;
+  check official scheme limits before adding.
+- Schema additions from `app/assessment/DESIGN.md` §7 (decide which, if any, before the demo).
+- "Declared vs verified": compare questionnaire answers with document-derived numbers.
 - `next@14.2.5` has a published security advisory; bump to a patched 14.2.x.
+- Native-speaker check of Hindi / Kannada / Tamil copy; favicon; mobile pass; demo script.
+- Open decisions: final product name; hosted vs self-hosted VLM and the privacy answer; fee numbers
+  (suggested: success fee 1–2%, lead fee ~₹300–500, SaaS ~₹25–50k/mo).
 
 ## Working agreements
 

@@ -1,7 +1,7 @@
 """Write JSON Schema + example files for the MSME contracts into /schemas/v1/msme.
 
 Run from backend/:  python -m scripts.export_schemas
-tests/test_schemas.py fails if the committed files are out of date.
+tests/schemas/test_msme_schemas.py fails if the committed files are out of date.
 """
 
 from __future__ import annotations

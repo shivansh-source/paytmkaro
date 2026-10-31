@@ -7,7 +7,7 @@ same pydantic checks; aggregates (totals, counts, period ranges) are computed he
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from statistics import mean
 from typing import Any
 
@@ -58,6 +58,16 @@ ROWS_MAX_TOKENS = 4096  # one page of transactions; 2048 image + prompt + 4096 s
 
 
 @dataclass
+class RejectedRead:
+    """A value that was read but failed validation (e.g. a PAN read as "ABCPK12E4F")."""
+
+    raw: str
+    source: FieldSource
+    page_index: int | None
+    reason: str
+
+
+@dataclass
 class Candidate:
     value: Any
     source: FieldSource
@@ -76,10 +86,13 @@ class _Extraction:
         self.table: list[dict[str, Any]] = []
         self.warnings: list[str] = []
         self.extra_tables: dict[str, list[dict[str, Any]]] = {}
+        # Reads that failed validation, kept apart so the envelope bridge can show them as "please check"
+        # (low confidence) instead of silently missing. Never recorded for Aadhaar.
+        self.rejected: dict[str, RejectedRead] = {}
 
     # ----- offering values -----
 
-    def _check(self, name: str, raw: Any, origin: str) -> Any | None:
+    def _check(self, name: str, raw: Any, origin: str, source: FieldSource, page_index: int | None) -> Any | None:
         if name not in FIELD_MODELS[self.type].model_fields:
             return None
         value, reason = validate_field(self.type, name, raw)
@@ -87,17 +100,19 @@ class _Extraction:
             # Never echo raw values on identity documents into user-visible warnings.
             shown = "" if self.type == DocumentType.AADHAAR else f" {str(raw)[:40]!r}"
             self.warnings.append(f"{name}: {origin} read{shown} but it failed validation ({reason}); not used")
+            if self.type != DocumentType.AADHAAR and isinstance(raw, (str, int, float)):
+                self.rejected.setdefault(name, RejectedRead(str(raw).strip()[:200], source, page_index, reason))
         return value
 
     def offer_text(self, name: str, hit: Hit, view: PageView) -> None:
         if name in self.fields:
             return
-        value = self._check(name, hit.value, "the document text")
+        value = self._check(name, hit.value, "the document text", view.source, view.index)
         if value is not None:
             self.fields[name] = Candidate(value, view.source, view.index, round(hit.confidence, 3), hit.note, name not in FREE_TEXT, _raw(hit.value))
 
     def offer_vlm(self, name: str, raw: Any, page_index: int | None) -> None:
-        value = self._check(name, raw, "the VLM")
+        value = self._check(name, raw, "the VLM", FieldSource.VLM, page_index)
         if value is None:
             return
         vlm = Candidate(value, FieldSource.VLM, page_index, VLM_CONFIDENCE, None, name not in FREE_TEXT, _raw(raw))
@@ -523,6 +538,8 @@ class Extraction:
 
     result: ExtractionResult
     raw: dict[str, str]  # field -> value as read, before normalising
+    # Fields with no valid value whose read failed validation; the bridge keeps them for the user to check.
+    rejected: dict[str, RejectedRead] = field(default_factory=dict)
 
 
 def extract_detailed(
@@ -575,7 +592,8 @@ def extract_detailed(
     }
     raw = {name: c.raw for name, c in state.fields.items() if c.raw is not None and c.source != FieldSource.COMPUTED}
     result = ExtractionResult(document_type=document_type, status=status, fields=fields, missing=missing, tables=tables, warnings=list(dict.fromkeys(state.warnings)))
-    return Extraction(result, raw)
+    rejected = {name: r for name, r in state.rejected.items() if name not in state.fields}
+    return Extraction(result, raw, rejected)
 
 
 def extract(
